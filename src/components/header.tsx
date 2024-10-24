@@ -20,7 +20,7 @@ export default function Header() {
             >
               <Gamepad2 className="h-8 w-8 text-primary" />
             </motion.div>
-            <span className="text-2xl font-bold">GameHub</span>
+            <span className="text-2xl font-bold">GameTap</span>
           </Link>
           <nav>
             <ul className="flex space-x-4">
