@@ -9,18 +9,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getUserStats, checkWeeklyReset, UserStats } from "@/utils/userStats";
+import {
+  getUserStats,
+  checkWeeklyReset,
+  UserStats,
+  INITIAL_STATS,
+} from "@/utils/userStats";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<UserStats>(getUserStats());
+  // Initialize with default stats in case SSR runs before useEffect
+  const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
 
   useEffect(() => {
-    checkWeeklyReset();
-    const updateInterval = setInterval(() => {
+    if (typeof window !== "undefined") {
+      checkWeeklyReset();
       setStats(getUserStats());
-    }, 1000); // Update every second
 
-    return () => clearInterval(updateInterval);
+      const updateInterval = setInterval(() => {
+        setStats(getUserStats());
+      }, 1000); // Update every second
+
+      return () => clearInterval(updateInterval);
+    }
   }, []);
 
   const formatTime = (seconds: number) => {
