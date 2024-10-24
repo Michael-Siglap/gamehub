@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,22 +11,45 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowRight, Grid3X3, Grid, Puzzle } from "lucide-react";
+import { ArrowRight, Grid3X3, Puzzle, Square } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const games = [
-  { name: "Tic Tac Toe 3x3", path: "/games/tictactoe/3", icon: Grid3X3 },
-  { name: "Tic Tac Toe 6x6", path: "/games/tictactoe/6", icon: Grid },
-  { name: "Tic Tac Toe 12x12", path: "/games/tictactoe/12", icon: Grid },
+  {
+    name: "Tic Tac Toe",
+    path: "/games/tictactoe",
+    icon: Grid3X3,
+    sizes: [3, 6, 12],
+  },
   { name: "Sudoku", path: "/games/sudoku", icon: Puzzle },
   { name: "Memory Game", path: "/games/memory", icon: Puzzle },
+  { name: "Tetris", path: "/games/tetris", icon: Square },
 ];
 
 export default function Home() {
+  const [open, setOpen] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<(typeof games)[0] | null>(
+    null
+  );
+
+  const handleGameClick = (game: (typeof games)[0]) => {
+    if (game.sizes) {
+      setSelectedGame(game);
+      setOpen(true);
+    }
+  };
+
   return (
     <div className="space-y-8">
-      <h1 className="text-4xl font-bold text-center">Welcome to GameTap</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <h1 className="text-4xl font-bold text-center">Welcome to GameHub</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {games.map((game) => {
           const Icon = game.icon;
           return (
@@ -51,18 +75,47 @@ export default function Home() {
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Link href={game.path} className="w-full">
-                    <Button className="w-full group">
+                  {game.sizes ? (
+                    <Button
+                      className="w-full group"
+                      onClick={() => handleGameClick(game)}
+                    >
                       Play Now
                       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link href={game.path} className="w-full">
+                      <Button className="w-full group">
+                        Play Now
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </Button>
+                    </Link>
+                  )}
                 </CardFooter>
               </Card>
             </motion.div>
           );
         })}
       </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Tic Tac Toe Size</DialogTitle>
+            <DialogDescription>
+              Choose the size of the Tic Tac Toe board you want to play.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4">
+            {selectedGame?.sizes?.map((size) => (
+              <Link key={size} href={`${selectedGame.path}/${size}`}>
+                <Button className="w-full">
+                  {size}x{size}
+                </Button>
+              </Link>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
