@@ -53,32 +53,14 @@ const difficulties = {
   hard: { size: 15, wordCount: 15 },
 };
 
-// Fetch words from Datamuse API
+// Fetch words from internal API route
 const fetchWords = async (wordCount: number): Promise<Word[]> => {
-  // You can change the 'ml' parameter to fetch words based on different meanings
-  const response = await fetch(
-    `https://api.datamuse.com/words?ml=game&max=${wordCount}`
-  );
-  const data = await response.json();
-
-  // Since Datamuse doesn't provide clues, we'll generate simple placeholder clues
-  return data.map((item: { word: string; tags?: string[] }) => ({
-    word: item.word.toUpperCase(),
-    clue: `A word related to "${item.word}".`,
-  }));
-};
-
-// Fetch definitions for clues (optional enhancement)
-const fetchDefinition = async (word: string): Promise<string> => {
-  const response = await fetch(
-    `https://api.datamuse.com/words?sp=${word.toLowerCase()}&md=d&max=1`
-  );
-  const data = await response.json();
-  if (data.length > 0 && data[0].defs) {
-    // defs are in the format "pos\tdefinition"
-    return data[0].defs[0].split("\t")[1];
+  const response = await fetch(`/api/fetchWords?wordCount=${wordCount}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch words");
   }
-  return `Definition for "${word}".`;
+  const data: Word[] = await response.json();
+  return data;
 };
 
 // Generate Crossword
@@ -87,14 +69,6 @@ const generateCrossword = async (
 ): Promise<{ grid: Cell[][]; clues: Clue[] }> => {
   const { size, wordCount } = difficulties[difficulty];
   const wordList = await fetchWords(wordCount);
-
-  // Optional: Fetch detailed definitions for clues
-  const detailedWordList: Word[] = await Promise.all(
-    wordList.map(async (wordObj) => {
-      const definition = await fetchDefinition(wordObj.word);
-      return { ...wordObj, clue: definition };
-    })
-  );
 
   // Initialize Grid
   const grid: Cell[][] = Array(size)
@@ -112,7 +86,7 @@ const generateCrossword = async (
   const clues: Clue[] = [];
   let wordNumber = 1;
 
-  const shuffledWords = [...detailedWordList].sort(() => Math.random() - 0.5);
+  const shuffledWords = [...wordList].sort(() => Math.random() - 0.5);
 
   // Function to place a word on the grid
   const placeWord = (
@@ -236,17 +210,25 @@ export default function Crossword() {
   // Initialize Puzzle on Mount or Difficulty Change
   useEffect(() => {
     const initializePuzzle = async () => {
-      const newPuzzle = await generateCrossword(difficulty);
-      setPuzzle(newPuzzle);
-      setUserInput(
-        Array(newPuzzle.grid.length)
-          .fill(null)
-          .map(() => Array(newPuzzle.grid[0].length).fill(""))
-      );
-      setCompleted(false);
-      setTimer(0);
-      setGameStartTime(null);
-      setFocusedCell(null);
+      try {
+        const newPuzzle = await generateCrossword(difficulty);
+        setPuzzle(newPuzzle);
+        setUserInput(
+          Array(newPuzzle.grid.length)
+            .fill(null)
+            .map(() => Array(newPuzzle.grid[0].length).fill(""))
+        );
+        setCompleted(false);
+        setTimer(0);
+        setGameStartTime(null);
+        setFocusedCell(null);
+      } catch (error) {
+        console.error("Error generating crossword:", error);
+        toast({
+          title: "Error",
+          description: "Failed to generate crossword. Please try again later.",
+        });
+      }
     };
     initializePuzzle();
   }, [difficulty]);
@@ -365,19 +347,27 @@ export default function Crossword() {
   // Reset Game
   const resetGame = async (daily = false) => {
     const newDifficulty = daily ? "medium" : difficulty;
-    const newPuzzle = await generateCrossword(newDifficulty);
-    setPuzzle(newPuzzle);
-    setUserInput(
-      Array(newPuzzle.grid.length)
-        .fill(null)
-        .map(() => Array(newPuzzle.grid[0].length).fill(""))
-    );
-    setCompleted(false);
-    setTimer(0);
-    setGameStartTime(null);
-    setFocusedCell(null);
-    setIsDaily(daily);
-    setDifficulty(newDifficulty);
+    try {
+      const newPuzzle = await generateCrossword(newDifficulty);
+      setPuzzle(newPuzzle);
+      setUserInput(
+        Array(newPuzzle.grid.length)
+          .fill(null)
+          .map(() => Array(newPuzzle.grid[0].length).fill(""))
+      );
+      setCompleted(false);
+      setTimer(0);
+      setGameStartTime(null);
+      setFocusedCell(null);
+      setIsDaily(daily);
+      setDifficulty(newDifficulty);
+    } catch (error) {
+      console.error("Error resetting game:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset game. Please try again later.",
+      });
+    }
   };
 
   // Get Hint for Focused Cell
