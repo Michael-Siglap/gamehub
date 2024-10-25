@@ -9,7 +9,7 @@ import { AdBanner } from "@/components/ad-banner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GameHub",
+  title: "GameTap",
   description: "A collection of simple online games",
 };
 

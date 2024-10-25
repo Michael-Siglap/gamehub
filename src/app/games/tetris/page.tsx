@@ -286,8 +286,8 @@ export default function Tetris() {
         <div className="flex justify-center space-x-2">
           <Button onClick={moveLeft}>Left</Button>
           <Button onClick={moveDown}>Down</Button>
-          <Button onClick={moveRight}>Right</Button>
           <Button onClick={rotate}>Rotate</Button>
+          <Button onClick={moveRight}>Right</Button>
         </div>
       </CardContent>
       <CardFooter>
