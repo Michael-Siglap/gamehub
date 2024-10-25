@@ -11,7 +11,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowRight, Grid3X3, Puzzle, Square } from "lucide-react";
+import {
+  ArrowRight,
+  Grid3X3,
+  Puzzle,
+  Square,
+  CrosshairIcon,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import {
   Dialog,
@@ -31,6 +37,12 @@ const games = [
   { name: "Sudoku", path: "/games/sudoku", icon: Puzzle },
   { name: "Memory Game", path: "/games/memory", icon: Puzzle },
   { name: "Tetris", path: "/games/tetris", icon: Square },
+  {
+    name: "Crossword",
+    path: "/games/crossword",
+    icon: CrosshairIcon,
+    description: "Daily puzzles and custom difficulties",
+  },
 ];
 
 export default function Home() {
@@ -65,7 +77,7 @@ export default function Home() {
                     <span>{game.name}</span>
                   </CardTitle>
                   <CardDescription>
-                    Challenge yourself with this game!
+                    {game.description || "Challenge yourself with this game!"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pb-2">
@@ -100,9 +112,10 @@ export default function Home() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Select Tic Tac Toe Size</DialogTitle>
+            <DialogTitle>Select {selectedGame?.name} Size</DialogTitle>
             <DialogDescription>
-              Choose the size of the Tic Tac Toe board you want to play.
+              Choose the size of the {selectedGame?.name} board you want to
+              play.
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-3 gap-4">
