@@ -1,3 +1,5 @@
+// src/app/games/tictactoe/[size]/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";

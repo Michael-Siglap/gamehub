@@ -1,3 +1,5 @@
+// src/app/games/crossword/page.tsx
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -24,24 +26,11 @@ import { incrementGamesPlayed, updateTimePlayed } from "@/utils/userStats";
 import { Confetti } from "@/components/confetti";
 import { Share2, HelpCircle, RefreshCw } from "lucide-react";
 
-// Expanded word list (you would have a much larger list in a real application)
-const wordList = [
-  { word: "REACT", clue: "JavaScript library for building user interfaces" },
-  { word: "NEXT", clue: "React framework for production" },
-  { word: "TYPESCRIPT", clue: "Typed superset of JavaScript" },
-  { word: "TAILWIND", clue: "Utility-first CSS framework" },
-  { word: "VERCEL", clue: "Platform for frontend frameworks and static sites" },
-  { word: "SHADCN", clue: "UI component library used in this project" },
-  { word: "GAME", clue: "What we're building here" },
-  { word: "HUB", clue: "Central point of activity" },
-  { word: "FUN", clue: "Enjoyment or playfulness" },
-  { word: "PUZZLE", clue: "A game or problem that tests ingenuity" },
-  { word: "DAILY", clue: "Occurring every day" },
-  { word: "CROSSWORD", clue: "Word puzzle with intersecting words" },
-  { word: "CHALLENGE", clue: "A test of one's abilities" },
-  { word: "SOLVE", clue: "To find the answer to a problem" },
-  { word: "CLUE", clue: "A piece of evidence to solve a puzzle" },
-];
+// Type Definitions
+interface Word {
+  word: string;
+  clue: string;
+}
 
 interface Cell {
   letter: string;
@@ -64,8 +53,50 @@ const difficulties = {
   hard: { size: 15, wordCount: 15 },
 };
 
-const generateCrossword = (difficulty: "easy" | "medium" | "hard") => {
+// Fetch words from Datamuse API
+const fetchWords = async (wordCount: number): Promise<Word[]> => {
+  // You can change the 'ml' parameter to fetch words based on different meanings
+  const response = await fetch(
+    `https://api.datamuse.com/words?ml=game&max=${wordCount}`
+  );
+  const data = await response.json();
+
+  // Since Datamuse doesn't provide clues, we'll generate simple placeholder clues
+  return data.map((item: { word: string; tags?: string[] }) => ({
+    word: item.word.toUpperCase(),
+    clue: `A word related to "${item.word}".`,
+  }));
+};
+
+// Fetch definitions for clues (optional enhancement)
+const fetchDefinition = async (word: string): Promise<string> => {
+  const response = await fetch(
+    `https://api.datamuse.com/words?sp=${word.toLowerCase()}&md=d&max=1`
+  );
+  const data = await response.json();
+  if (data.length > 0 && data[0].defs) {
+    // defs are in the format "pos\tdefinition"
+    return data[0].defs[0].split("\t")[1];
+  }
+  return `Definition for "${word}".`;
+};
+
+// Generate Crossword
+const generateCrossword = async (
+  difficulty: "easy" | "medium" | "hard"
+): Promise<{ grid: Cell[][]; clues: Clue[] }> => {
   const { size, wordCount } = difficulties[difficulty];
+  const wordList = await fetchWords(wordCount);
+
+  // Optional: Fetch detailed definitions for clues
+  const detailedWordList: Word[] = await Promise.all(
+    wordList.map(async (wordObj) => {
+      const definition = await fetchDefinition(wordObj.word);
+      return { ...wordObj, clue: definition };
+    })
+  );
+
+  // Initialize Grid
   const grid: Cell[][] = Array(size)
     .fill(null)
     .map(() =>
@@ -77,13 +108,13 @@ const generateCrossword = (difficulty: "easy" | "medium" | "hard") => {
           isStart: { across: false, down: false },
         }))
     );
+
   const clues: Clue[] = [];
   let wordNumber = 1;
 
-  const shuffledWords = [...wordList]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, wordCount);
+  const shuffledWords = [...detailedWordList].sort(() => Math.random() - 0.5);
 
+  // Function to place a word on the grid
   const placeWord = (
     word: string,
     clue: string,
@@ -117,9 +148,55 @@ const generateCrossword = (difficulty: "easy" | "medium" | "hard") => {
     wordNumber++;
   };
 
-  // Simple word placement algorithm (this could be improved for better puzzles)
-  shuffledWords.forEach((wordObj, index) => {
-    const direction = index % 2 === 0 ? "across" : "down";
+  // Function to check if a word can be placed at a position
+  const canPlaceWord = (
+    grid: Cell[][],
+    word: string,
+    startX: number,
+    startY: number,
+    direction: "across" | "down",
+    size: number
+  ): boolean => {
+    let x = startX;
+    let y = startY;
+
+    for (let i = 0; i < word.length; i++) {
+      if (x >= size || y >= size) return false;
+      const cell = grid[y][x];
+
+      if (cell.letter && cell.letter !== word[i]) return false;
+
+      // Check for adjacent letters to ensure proper crossword structure
+      if (direction === "across") {
+        if (x > 0 && grid[y][x - 1].letter && i === 0) return false;
+        if (x < size - 1 && grid[y][x + 1].letter && i === word.length - 1)
+          return false;
+        if (y > 0 && grid[y - 1][x].letter) return false;
+        if (y < size - 1 && grid[y + 1][x].letter) return false;
+      } else {
+        if (y > 0 && grid[y - 1][x].letter && i === 0) return false;
+        if (y < size - 1 && grid[y + 1][x].letter && i === word.length - 1)
+          return false;
+        if (x > 0 && grid[y][x - 1].letter) return false;
+        if (x < size - 1 && grid[y][x + 1].letter) return false;
+      }
+
+      // Move to next cell based on direction
+      if (direction === "across") x++;
+      else y++;
+    }
+
+    return true;
+  };
+
+  // Place words on the grid
+  for (const wordObj of shuffledWords) {
+    const direction: "across" | "down" =
+      clues.filter((clue) => clue.direction === "across").length >
+      clues.filter((clue) => clue.direction === "down").length
+        ? "down"
+        : "across";
+
     let placed = false;
     for (let attempt = 0; attempt < 100 && !placed; attempt++) {
       const startX = Math.floor(Math.random() * size);
@@ -129,49 +206,20 @@ const generateCrossword = (difficulty: "easy" | "medium" | "hard") => {
         placed = true;
       }
     }
-  });
+  }
 
   return { grid, clues };
 };
 
-const canPlaceWord = (
-  grid: Cell[][],
-  word: string,
-  startX: number,
-  startY: number,
-  direction: "across" | "down",
-  size: number
-) => {
-  let x = startX;
-  let y = startY;
-  for (let i = 0; i < word.length; i++) {
-    if (x >= size || y >= size) return false;
-    if (grid[y][x].letter && grid[y][x].letter !== word[i]) return false;
-    if (direction === "across") {
-      if (x > 0 && grid[y][x - 1].letter) return false;
-      if (x < size - 1 && grid[y][x + 1].letter && i === word.length - 1)
-        return false;
-    } else {
-      if (y > 0 && grid[y - 1][x].letter) return false;
-      if (y < size - 1 && grid[y + 1][x].letter && i === word.length - 1)
-        return false;
-    }
-    if (direction === "across") x++;
-    else y++;
-  }
-  return true;
-};
-
-// const getDailyPuzzleSeed = () => {
-//   const today = new Date();
-//   return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-// };
-
+// Crossword Component
 export default function Crossword() {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
     "medium"
   );
-  const [puzzle, setPuzzle] = useState(() => generateCrossword(difficulty));
+  const [puzzle, setPuzzle] = useState<{ grid: Cell[][]; clues: Clue[] }>({
+    grid: [],
+    clues: [],
+  });
   const [userInput, setUserInput] = useState<string[][]>([]);
   const [focusedCell, setFocusedCell] = useState<{
     x: number;
@@ -185,6 +233,50 @@ export default function Crossword() {
   const { toast } = useToast();
   const gridRef = useRef<HTMLDivElement>(null);
 
+  // Initialize Puzzle on Mount or Difficulty Change
+  useEffect(() => {
+    const initializePuzzle = async () => {
+      const newPuzzle = await generateCrossword(difficulty);
+      setPuzzle(newPuzzle);
+      setUserInput(
+        Array(newPuzzle.grid.length)
+          .fill(null)
+          .map(() => Array(newPuzzle.grid[0].length).fill(""))
+      );
+      setCompleted(false);
+      setTimer(0);
+      setGameStartTime(null);
+      setFocusedCell(null);
+    };
+    initializePuzzle();
+  }, [difficulty]);
+
+  // Timer Effect
+  useEffect(() => {
+    if (!completed && gameStartTime !== null) {
+      const interval = setInterval(() => {
+        setTimer(Math.floor((Date.now() - gameStartTime) / 1000));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [completed, gameStartTime]);
+
+  // Save State to Local Storage
+  useEffect(() => {
+    localStorage.setItem(
+      "crosswordState",
+      JSON.stringify({
+        puzzle,
+        userInput,
+        timer,
+        gameStartTime,
+        difficulty,
+        isDaily,
+      })
+    );
+  }, [puzzle, userInput, timer, gameStartTime, difficulty, isDaily]);
+
+  // Load State from Local Storage on Mount
   useEffect(() => {
     const savedState = localStorage.getItem("crosswordState");
     if (savedState) {
@@ -201,29 +293,7 @@ export default function Crossword() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!completed && gameStartTime) {
-      const interval = setInterval(() => {
-        setTimer(Math.floor((Date.now() - gameStartTime) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [completed, gameStartTime]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "crosswordState",
-      JSON.stringify({
-        puzzle,
-        userInput,
-        timer,
-        gameStartTime,
-        difficulty,
-        isDaily,
-      })
-    );
-  }, [puzzle, userInput, timer, gameStartTime, difficulty, isDaily]);
-
+  // Handle Input Change
   const handleInputChange = (x: number, y: number, value: string) => {
     if (!gameStartTime) setGameStartTime(Date.now());
     const newInput = [...userInput];
@@ -239,10 +309,11 @@ export default function Crossword() {
 
     // Check if puzzle is completed
     if (
-      newInput.every((row, y) =>
+      newInput.every((row, yIdx) =>
         row.every(
-          (cell, x) =>
-            !puzzle.grid[y][x].letter || cell === puzzle.grid[y][x].letter
+          (cell, xIdx) =>
+            !puzzle.grid[yIdx][xIdx].letter ||
+            cell === puzzle.grid[yIdx][xIdx].letter
         )
       )
     ) {
@@ -261,6 +332,7 @@ export default function Crossword() {
     }
   };
 
+  // Handle Cell Focus
   const handleCellFocus = (x: number, y: number) => {
     if (focusedCell?.x === x && focusedCell?.y === y) {
       setDirection((prev) => (prev === "across" ? "down" : "across"));
@@ -268,6 +340,7 @@ export default function Crossword() {
     setFocusedCell({ x, y });
   };
 
+  // Handle Keyboard Navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!focusedCell) return;
     const { x, y } = focusedCell;
@@ -284,14 +357,15 @@ export default function Crossword() {
       case "ArrowUp":
         if (y > 0) setFocusedCell({ x, y: y - 1 });
         break;
+      default:
+        break;
     }
   };
 
-  const resetGame = (daily = false) => {
+  // Reset Game
+  const resetGame = async (daily = false) => {
     const newDifficulty = daily ? "medium" : difficulty;
-    const newPuzzle = daily
-      ? generateCrossword(newDifficulty)
-      : generateCrossword(newDifficulty);
+    const newPuzzle = await generateCrossword(newDifficulty);
     setPuzzle(newPuzzle);
     setUserInput(
       Array(newPuzzle.grid.length)
@@ -306,18 +380,23 @@ export default function Crossword() {
     setDifficulty(newDifficulty);
   };
 
+  // Get Hint for Focused Cell
   const getHint = () => {
     if (!focusedCell) return;
     const { x, y } = focusedCell;
-    const newInput = [...userInput];
-    newInput[y][x] = puzzle.grid[y][x].letter;
-    setUserInput(newInput);
-    toast({
-      title: "Hint",
-      description: `The correct letter is "${puzzle.grid[y][x].letter}"`,
-    });
+    const correctLetter = puzzle.grid[y][x].letter;
+    if (correctLetter) {
+      const newInput = [...userInput];
+      newInput[y][x] = correctLetter;
+      setUserInput(newInput);
+      toast({
+        title: "Hint",
+        description: `The correct letter is "${correctLetter}"`,
+      });
+    }
   };
 
+  // Share Puzzle
   const sharePuzzle = () => {
     const shareText = `I completed the ${
       isDaily ? "daily " : ""
@@ -332,7 +411,8 @@ export default function Crossword() {
     });
   };
 
-  const formatTime = (seconds: number) => {
+  // Format Time
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -391,8 +471,10 @@ export default function Crossword() {
             <div
               className="grid gap-1"
               style={{
-                gridTemplateColumns: `repeat(${puzzle.grid[0].length}, minmax(0, 1fr))`,
-                width: `${puzzle.grid[0].length * 2.5}rem`,
+                gridTemplateColumns: `repeat(${
+                  puzzle.grid[0]?.length || 0
+                }, minmax(0, 1fr))`,
+                width: `${(puzzle.grid[0]?.length || 0) * 2.5}rem`,
               }}
             >
               {puzzle.grid.map((row, y) =>
