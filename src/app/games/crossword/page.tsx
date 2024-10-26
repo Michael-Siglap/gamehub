@@ -36,6 +36,7 @@ interface Cell {
   letter: string;
   number: number | null;
   isStart: { across: boolean; down: boolean };
+  isBlack: boolean;
 }
 
 interface Clue {
@@ -48,9 +49,9 @@ interface Clue {
 }
 
 const difficulties = {
-  easy: { size: 10, wordCount: 8 },
-  medium: { size: 13, wordCount: 12 },
-  hard: { size: 15, wordCount: 15 },
+  easy: { size: 10, wordCount: 10 },
+  medium: { size: 13, wordCount: 14 },
+  hard: { size: 20, wordCount: 25 },
 };
 
 // Fetch words from internal API route
@@ -63,12 +64,15 @@ const fetchWords = async (wordCount: number): Promise<Word[]> => {
   return data;
 };
 
-// Generate Crossword
+// Generate Crossword with enhanced intersecting words
 const generateCrossword = async (
   difficulty: "easy" | "medium" | "hard"
 ): Promise<{ grid: Cell[][]; clues: Clue[] }> => {
   const { size, wordCount } = difficulties[difficulty];
-  const wordList = await fetchWords(wordCount);
+  let wordList = await fetchWords(wordCount);
+
+  // Shuffle word list to ensure randomness
+  wordList = shuffleArray(wordList);
 
   // Initialize Grid
   const grid: Cell[][] = Array(size)
@@ -80,110 +84,238 @@ const generateCrossword = async (
           letter: "",
           number: null,
           isStart: { across: false, down: false },
+          isBlack: true, // All cells start as black squares
         }))
     );
 
   const clues: Clue[] = [];
   let wordNumber = 1;
 
-  const shuffledWords = [...wordList].sort(() => Math.random() - 0.5);
+  // Start by placing the first word in the middle
+  const firstWordObj = wordList.shift();
+  if (!firstWordObj) throw new Error("No words to place");
+  const startX =
+    Math.floor(size / 2) - Math.floor(firstWordObj.word.length / 2);
+  const startY = Math.floor(size / 2);
 
-  // Function to place a word on the grid
-  const placeWord = (
-    word: string,
-    clue: string,
-    startX: number,
-    startY: number,
-    direction: "across" | "down"
-  ) => {
-    let x = startX;
-    let y = startY;
-    const newClue: Clue = {
-      number: wordNumber,
-      clue,
-      direction,
-      answer: word,
-      startX,
-      startY,
-    };
-    clues.push(newClue);
+  placeWord(
+    grid,
+    firstWordObj.word,
+    firstWordObj.clue,
+    startX,
+    startY,
+    "across",
+    clues,
+    wordNumber++
+  );
 
-    for (let i = 0; i < word.length; i++) {
-      if (x < size && y < size) {
-        grid[y][x].letter = word[i];
-        if (i === 0) {
-          grid[y][x].number = wordNumber;
-          grid[y][x].isStart[direction] = true;
-        }
-        if (direction === "across") x++;
-        else y++;
-      }
-    }
-    wordNumber++;
-  };
-
-  // Function to check if a word can be placed at a position
-  const canPlaceWord = (
-    grid: Cell[][],
-    word: string,
-    startX: number,
-    startY: number,
-    direction: "across" | "down",
-    size: number
-  ): boolean => {
-    let x = startX;
-    let y = startY;
-
-    for (let i = 0; i < word.length; i++) {
-      if (x >= size || y >= size) return false;
-      const cell = grid[y][x];
-
-      if (cell.letter && cell.letter !== word[i]) return false;
-
-      // Check for adjacent letters to ensure proper crossword structure
-      if (direction === "across") {
-        if (x > 0 && grid[y][x - 1].letter && i === 0) return false;
-        if (x < size - 1 && grid[y][x + 1].letter && i === word.length - 1)
-          return false;
-        if (y > 0 && grid[y - 1][x].letter) return false;
-        if (y < size - 1 && grid[y + 1][x].letter) return false;
-      } else {
-        if (y > 0 && grid[y - 1][x].letter && i === 0) return false;
-        if (y < size - 1 && grid[y + 1][x].letter && i === word.length - 1)
-          return false;
-        if (x > 0 && grid[y][x - 1].letter) return false;
-        if (x < size - 1 && grid[y][x + 1].letter) return false;
-      }
-
-      // Move to next cell based on direction
-      if (direction === "across") x++;
-      else y++;
-    }
-
-    return true;
-  };
-
-  // Place words on the grid
-  for (const wordObj of shuffledWords) {
-    const direction: "across" | "down" =
-      clues.filter((clue) => clue.direction === "across").length >
-      clues.filter((clue) => clue.direction === "down").length
-        ? "down"
-        : "across";
-
+  // Now, try to place the remaining words with maximum intersections
+  for (const wordObj of wordList) {
     let placed = false;
-    for (let attempt = 0; attempt < 100 && !placed; attempt++) {
-      const startX = Math.floor(Math.random() * size);
-      const startY = Math.floor(Math.random() * size);
-      if (canPlaceWord(grid, wordObj.word, startX, startY, direction, size)) {
-        placeWord(wordObj.word, wordObj.clue, startX, startY, direction);
-        placed = true;
+    // Shuffle clues to vary intersections
+    const shuffledClues = shuffleArray(clues);
+    for (const existingClue of shuffledClues) {
+      const intersections = findIntersections(
+        wordObj.word,
+        existingClue.answer
+      );
+      // Shuffle intersections to add randomness
+      const shuffledIntersections = shuffleArray(intersections);
+      for (const intersection of shuffledIntersections) {
+        const coord = getCoordinates(
+          existingClue,
+          intersection.indexExisting,
+          intersection.indexNew
+        );
+        if (
+          canPlaceWordAt(
+            grid,
+            wordObj.word,
+            coord.x,
+            coord.y,
+            oppositeDirection(existingClue.direction)
+          )
+        ) {
+          placeWord(
+            grid,
+            wordObj.word,
+            wordObj.clue,
+            coord.x,
+            coord.y,
+            oppositeDirection(existingClue.direction),
+            clues,
+            wordNumber++
+          );
+          placed = true;
+          break;
+        }
+      }
+      if (placed) break;
+    }
+    // If not placed, try to place it anywhere
+    if (!placed) {
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const directions: Array<"across" | "down"> = ["across", "down"];
+          for (const dir of directions) {
+            if (canPlaceWordAt(grid, wordObj.word, x, y, dir)) {
+              placeWord(
+                grid,
+                wordObj.word,
+                wordObj.clue,
+                x,
+                y,
+                dir,
+                clues,
+                wordNumber++
+              );
+              placed = true;
+              break;
+            }
+          }
+          if (placed) break;
+        }
+        if (placed) break;
+      }
+    }
+    // If still not placed, skip the word
+  }
+
+  // Convert unused black cells to empty cells
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (grid[y][x].letter) {
+        grid[y][x].isBlack = false;
       }
     }
   }
 
   return { grid, clues };
 };
+
+// Helper function to shuffle an array
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
+// Helper function to find common letters between two words
+const findIntersections = (word1: string, word2: string) => {
+  const intersections: { indexExisting: number; indexNew: number }[] = [];
+  for (let i = 0; i < word1.length; i++) {
+    const char1 = word1[i].toUpperCase();
+    for (let j = 0; j < word2.length; j++) {
+      const char2 = word2[j].toUpperCase();
+      if (char1 === char2) {
+        intersections.push({ indexExisting: j, indexNew: i });
+      }
+    }
+  }
+  return intersections;
+};
+
+// Helper function to get coordinates for placing a word
+const getCoordinates = (
+  existingClue: Clue,
+  existingIndex: number,
+  newIndex: number
+) => {
+  let x = existingClue.startX;
+  let y = existingClue.startY;
+  if (existingClue.direction === "across") {
+    x += existingIndex;
+  } else {
+    y += existingIndex;
+  }
+
+  if (existingClue.direction === "across") {
+    y -= newIndex;
+  } else {
+    x -= newIndex;
+  }
+
+  return { x, y };
+};
+
+// Helper function to check if a word can be placed at a position
+const canPlaceWordAt = (
+  grid: Cell[][],
+  word: string,
+  x: number,
+  y: number,
+  direction: "across" | "down"
+): boolean => {
+  for (let i = 0; i < word.length; i++) {
+    const xi = direction === "across" ? x + i : x;
+    const yi = direction === "down" ? y + i : y;
+
+    if (xi < 0 || xi >= grid[0].length || yi < 0 || yi >= grid.length) {
+      return false;
+    }
+
+    const cell = grid[yi][xi];
+    const currentLetter = word[i].toUpperCase();
+
+    if (cell.letter) {
+      if (cell.letter !== currentLetter) return false;
+    } else {
+      // Check for adjacent letters to prevent unintended words
+      if (
+        (direction === "across" &&
+          ((yi > 0 && grid[yi - 1][xi].letter) ||
+            (yi < grid.length - 1 && grid[yi + 1][xi].letter))) ||
+        (direction === "down" &&
+          ((xi > 0 && grid[yi][xi - 1].letter) ||
+            (xi < grid[0].length - 1 && grid[yi][xi + 1].letter)))
+      ) {
+        return false;
+      }
+    }
+  }
+  // Check surrounding cells for words (optional)
+  // You can add more rules here if needed
+  return true;
+};
+
+// Helper function to place a word on the grid
+const placeWord = (
+  grid: Cell[][],
+  word: string,
+  clue: string,
+  x: number,
+  y: number,
+  direction: "across" | "down",
+  clues: Clue[],
+  wordNumber: number
+) => {
+  const newClue: Clue = {
+    number: wordNumber,
+    clue,
+    direction,
+    answer: word.toUpperCase(),
+    startX: x,
+    startY: y,
+  };
+  clues.push(newClue);
+
+  for (let i = 0; i < word.length; i++) {
+    const xi = direction === "across" ? x + i : x;
+    const yi = direction === "down" ? y + i : y;
+    grid[yi][xi].letter = word[i].toUpperCase();
+    if (i === 0) {
+      grid[yi][xi].number = wordNumber;
+      grid[yi][xi].isStart[direction] = true;
+    }
+  }
+};
+
+// Helper function to get the opposite direction
+const oppositeDirection = (direction: "across" | "down"): "across" | "down" =>
+  direction === "across" ? "down" : "across";
 
 // Crossword Component
 export default function Crossword() {
@@ -346,6 +478,10 @@ export default function Crossword() {
 
   // Reset Game
   const resetGame = async (daily = false) => {
+    toast({
+      title: "Generating New Puzzle",
+      description: "Please wait while we generate a new crossword puzzle.",
+    });
     const newDifficulty = daily ? "medium" : difficulty;
     try {
       const newPuzzle = await generateCrossword(newDifficulty);
@@ -361,6 +497,10 @@ export default function Crossword() {
       setFocusedCell(null);
       setIsDaily(daily);
       setDifficulty(newDifficulty);
+      toast({
+        title: "New Puzzle",
+        description: "A new crossword puzzle has been generated!",
+      });
     } catch (error) {
       console.error("Error resetting game:", error);
       toast({
@@ -409,19 +549,24 @@ export default function Crossword() {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-3xl">
+    <Card className="w-full max-w-6xl mx-auto p-2 sm:p-4">
+      <CardHeader className="mb-2">
+        <CardTitle className="text-2xl sm:text-3xl">
           {isDaily ? "Daily Crossword" : "Crossword Puzzle"}
         </CardTitle>
-        <CardDescription>Fill in the crossword puzzle!</CardDescription>
+        <CardDescription className="text-sm sm:text-base">
+          Fill in the crossword puzzle!
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
-          <Badge variant="outline" className="text-lg py-1 px-3">
+        <div className="mb-2 flex justify-between items-center flex-wrap gap-2">
+          <Badge
+            variant="outline"
+            className="text-sm sm:text-base py-1 px-2 sm:px-3"
+          >
             Time: {formatTime(timer)}
           </Badge>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             <Select
               value={difficulty}
               onValueChange={(value: "easy" | "medium" | "hard") =>
@@ -429,7 +574,7 @@ export default function Crossword() {
               }
               disabled={isDaily}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-32 sm:w-40">
                 <SelectValue placeholder="Select difficulty" />
               </SelectTrigger>
               <SelectContent>
@@ -442,36 +587,42 @@ export default function Crossword() {
               variant="outline"
               size="sm"
               onClick={() => resetGame(false)}
+              className="flex items-center space-x-1 sm:space-x-2"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              New Puzzle
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline">New Puzzle</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => resetGame(true)}>
-              Daily Puzzle
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => resetGame(true)}
+              className="hidden sm:flex items-center space-x-1 sm:space-x-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Daily Puzzle</span>
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
           <div
-            className="overflow-x-auto"
+            className="flex-grow"
             ref={gridRef}
             onKeyDown={handleKeyDown}
             tabIndex={0}
           >
             <div
-              className="grid gap-1"
+              className="grid gap-0.5 sm:gap-1"
               style={{
                 gridTemplateColumns: `repeat(${
                   puzzle.grid[0]?.length || 0
-                }, minmax(0, 1fr))`,
-                width: `${(puzzle.grid[0]?.length || 0) * 2.5}rem`,
+                }, 1fr)`,
               }}
             >
               {puzzle.grid.map((row, y) =>
                 row.map((cell, x) => (
                   <div key={`${x}-${y}`} className="relative">
                     {cell.number && (
-                      <span className="absolute top-0 left-0 text-xs">
+                      <span className="absolute top-0 left-0 text-[0.6rem] sm:text-xs">
                         {cell.number}
                       </span>
                     )}
@@ -481,52 +632,73 @@ export default function Crossword() {
                       value={userInput[y]?.[x] || ""}
                       onChange={(e) => handleInputChange(x, y, e.target.value)}
                       onFocus={() => handleCellFocus(x, y)}
-                      className={`w-10 h-10 text-center p-0 ${
-                        cell.letter ? "bg-secondary" : "bg-background"
+                      className={`w-full aspect-square text-center p-0 text-xs sm:text-lg font-semibold ${
+                        cell.isBlack
+                          ? "bg-black cursor-not-allowed"
+                          : cell.letter
+                          ? "bg-secondary"
+                          : "bg-gray-100 dark:bg-gray-700"
                       } ${
                         focusedCell?.x === x && focusedCell?.y === y
-                          ? "ring-2 ring-primary"
+                          ? "ring-1 sm:ring-2 ring-primary"
                           : ""
                       }`}
-                      disabled={!cell.letter || completed}
+                      disabled={cell.isBlack || completed}
                     />
                   </div>
                 ))
               )}
             </div>
           </div>
-          <div className="space-y-2">
-            <h3 className="font-bold">Across</h3>
-            {puzzle.clues
-              .filter((clue) => clue.direction === "across")
-              .map((clue) => (
-                <p key={`across-${clue.number}`}>
-                  {clue.number}. {clue.clue}
-                </p>
-              ))}
-            <h3 className="font-bold mt-4">Down</h3>
-            {puzzle.clues
-              .filter((clue) => clue.direction === "down")
-              .map((clue) => (
-                <p key={`down-${clue.number}`}>
-                  {clue.number}. {clue.clue}
-                </p>
-              ))}
+          <div className="w-full md:w-1/3 overflow-y-auto max-h-80 sm:max-h-96">
+            <div className="space-y-1 sm:space-y-2">
+              <h3 className="font-semibold text-sm sm:text-base">Across</h3>
+              {puzzle.clues
+                .filter((clue) => clue.direction === "across")
+                .map((clue) => (
+                  <p
+                    key={`across-${clue.number}`}
+                    className="text-xs sm:text-sm"
+                  >
+                    <span className="font-semibold">{clue.number}.</span>{" "}
+                    {clue.clue}
+                  </p>
+                ))}
+              <h3 className="font-semibold text-sm sm:text-base mt-2 sm:mt-4">
+                Down
+              </h3>
+              {puzzle.clues
+                .filter((clue) => clue.direction === "down")
+                .map((clue) => (
+                  <p key={`down-${clue.number}`} className="text-xs sm:text-sm">
+                    <span className="font-semibold">{clue.number}.</span>{" "}
+                    {clue.clue}
+                  </p>
+                ))}
+            </div>
           </div>
         </div>
-        <div className="mt-4 flex justify-center space-x-2">
-          <Button onClick={getHint} disabled={completed}>
-            <HelpCircle className="mr-2 h-4 w-4" />
-            Hint
+        <div className="mt-2 sm:mt-4 flex justify-center space-x-2">
+          <Button
+            onClick={getHint}
+            disabled={completed}
+            className="flex items-center space-x-1 sm:space-x-2"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Hint</span>
           </Button>
-          <Button onClick={sharePuzzle} disabled={!completed}>
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
+          <Button
+            onClick={sharePuzzle}
+            disabled={!completed}
+            className="flex items-center space-x-1 sm:space-x-2"
+          >
+            <Share2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Share</span>
           </Button>
         </div>
       </CardContent>
       <CardFooter>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Tip: Use arrow keys to navigate, and click a cell twice to switch
           between across and down.
         </p>
