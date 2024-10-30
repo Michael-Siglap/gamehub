@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,10 +28,28 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { incrementGamesPlayed, updateTimePlayed } from "@/utils/userStats";
 import { Confetti } from "@/components/confetti";
-import { Share2, HelpCircle, RefreshCw } from "lucide-react";
-import { Leaderboard } from "@/components/leaderboard";
+import {
+  Share2,
+  HelpCircle,
+  RefreshCw,
+  Pause,
+  Play,
+  Save,
+  Download,
+} from "lucide-react";
 import { Disclosure } from "@headlessui/react";
 import { ChevronUpIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface Word {
   word: string;
@@ -59,134 +83,6 @@ const difficulties = {
   easy: { size: 10, wordCount: 10 },
   medium: { size: 13, wordCount: 14 },
   hard: { size: 20, wordCount: 25 },
-};
-
-const fetchWords = async (wordCount: number): Promise<Word[]> => {
-  const response = await fetch(`/api/fetchWords?wordCount=${wordCount}`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch words");
-  }
-  const data: Word[] = await response.json();
-  return data;
-};
-
-const generateCrossword = async (
-  difficulty: "easy" | "medium" | "hard"
-): Promise<{ grid: Cell[][]; clues: Clue[] }> => {
-  const { size, wordCount } = difficulties[difficulty];
-  let wordList = await fetchWords(wordCount);
-
-  wordList = shuffleArray(wordList);
-
-  const grid: Cell[][] = Array(size)
-    .fill(null)
-    .map(() =>
-      Array(size)
-        .fill(null)
-        .map(() => ({
-          letter: "",
-          number: null,
-          isStart: { across: false, down: false },
-          isBlack: true,
-        }))
-    );
-
-  const clues: Clue[] = [];
-  let wordNumber = 1;
-
-  const firstWordObj = wordList.shift();
-  if (!firstWordObj) throw new Error("No words to place");
-  const startX =
-    Math.floor(size / 2) - Math.floor(firstWordObj.word.length / 2);
-  const startY = Math.floor(size / 2);
-
-  placeWord(
-    grid,
-    firstWordObj.word,
-    firstWordObj.clue,
-    startX,
-    startY,
-    "across",
-    clues,
-    wordNumber++
-  );
-
-  for (const wordObj of wordList) {
-    let placed = false;
-    const shuffledClues = shuffleArray(clues);
-    for (const existingClue of shuffledClues) {
-      const intersections = findIntersections(
-        wordObj.word,
-        existingClue.answer
-      );
-      const shuffledIntersections = shuffleArray(intersections);
-      for (const intersection of shuffledIntersections) {
-        const coord = getCoordinates(
-          existingClue,
-          intersection.indexExisting,
-          intersection.indexNew
-        );
-        if (
-          canPlaceWordAt(
-            grid,
-            wordObj.word,
-            coord.x,
-            coord.y,
-            oppositeDirection(existingClue.direction)
-          )
-        ) {
-          placeWord(
-            grid,
-            wordObj.word,
-            wordObj.clue,
-            coord.x,
-            coord.y,
-            oppositeDirection(existingClue.direction),
-            clues,
-            wordNumber++
-          );
-          placed = true;
-          break;
-        }
-      }
-      if (placed) break;
-    }
-    if (!placed) {
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const directions: Array<"across" | "down"> = ["across", "down"];
-          for (const dir of directions) {
-            if (canPlaceWordAt(grid, wordObj.word, x, y, dir)) {
-              placeWord(
-                grid,
-                wordObj.word,
-                wordObj.clue,
-                x,
-                y,
-                dir,
-                clues,
-                wordNumber++
-              );
-              placed = true;
-              break;
-            }
-          }
-          if (placed) break;
-        }
-        if (placed) break;
-      }
-    }
-  }
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (grid[y][x].letter) {
-        grid[y][x].isBlack = false;
-      }
-    }
-  }
-
-  return { grid, clues };
 };
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -304,100 +200,45 @@ const placeWord = (
 const oppositeDirection = (direction: "across" | "down"): "across" | "down" =>
   direction === "across" ? "down" : "across";
 
-function CluesAccordion({
-  clues,
-  toggleRevealClue,
-  revealedClues,
-}: {
-  clues: Clue[];
-  toggleRevealClue: (clue: Clue) => void;
-  revealedClues: Set<string>;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Across Clues Accordion */}
-      <Disclosure>
-        {({ open }) => (
-          <div>
-            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-gray-900 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
-              <span>Across</span>
-              <ChevronUpIcon
-                className={`${
-                  open ? "transform rotate-180" : ""
-                } w-5 h-5 text-purple-500`}
-              />
-            </Disclosure.Button>
-            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-700 max-h-40 overflow-auto">
-              {clues
-                .filter((clue: Clue) => clue.direction === "across")
-                .map((clue: Clue) => {
-                  const clueId = `across-${clue.number}`;
-                  const isRevealed = revealedClues.has(clueId);
-                  return (
-                    <p
-                      key={clueId}
-                      className={`text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors mb-2 ${
-                        isRevealed ? "text-green-600 font-medium" : ""
-                      }`}
-                      onClick={() => toggleRevealClue(clue)}
-                    >
-                      <span className="font-semibold">{clue.number}.</span>{" "}
-                      {clue.clue}
-                      {isRevealed && (
-                        <span className="ml-2 text-green-600">
-                          {`(${clue.answer})`}
-                        </span>
-                      )}
-                    </p>
-                  );
-                })}
-            </Disclosure.Panel>
-          </div>
-        )}
-      </Disclosure>
+const useDebounce = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-      {/* Down Clues Accordion */}
-      <Disclosure>
-        {({ open }) => (
-          <div>
-            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-gray-900 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
-              <span>Down</span>
-              <ChevronUpIcon
-                className={`${
-                  open ? "transform rotate-180" : ""
-                } w-5 h-5 text-purple-500`}
-              />
-            </Disclosure.Button>
-            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-700 max-h-40 overflow-auto">
-              {clues
-                .filter((clue: Clue) => clue.direction === "down")
-                .map((clue: Clue) => {
-                  const clueId = `down-${clue.number}`;
-                  const isRevealed = revealedClues.has(clueId);
-                  return (
-                    <p
-                      key={clueId}
-                      className={`text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors mb-2 ${
-                        isRevealed ? "text-green-600 font-medium" : ""
-                      }`}
-                      onClick={() => toggleRevealClue(clue)}
-                    >
-                      <span className="font-semibold">{clue.number}.</span>{" "}
-                      {clue.clue}
-                      {isRevealed && (
-                        <span className="ml-2 text-green-600">
-                          {`(${clue.answer})`}
-                        </span>
-                      )}
-                    </p>
-                  );
-                })}
-            </Disclosure.Panel>
-          </div>
-        )}
-      </Disclosure>
-    </div>
-  );
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="text-center text-red-500">
+          Something went wrong. Please refresh the page.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function Crossword() {
@@ -431,12 +272,143 @@ export default function Crossword() {
   const [currentUserRank, setCurrentUserRank] = useState<number | undefined>(
     undefined
   );
-
-  // New State for Revealed Clues
   const [revealedClues, setRevealedClues] = useState<Set<string>>(new Set());
+  const [hintsUsed, setHintsUsed] = useState<number>(0);
+  const maxHints = 3;
+  const debouncedUserInput = useDebounce(userInput, 500);
 
-  // State for Clues Modal (if you choose to implement it)
-  // const [isCluesOpen, setIsCluesOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [showTimer, setShowTimer] = useState(true);
+  const [showIncorrect, setShowIncorrect] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const fetchWords = async (wordCount: number): Promise<Word[]> => {
+    const response = await fetch(`/api/fetchWords?wordCount=${wordCount}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch words");
+    }
+    const data: Word[] = await response.json();
+    return data;
+  };
+
+  const generateCrossword = async (
+    difficulty: "easy" | "medium" | "hard"
+  ): Promise<{ grid: Cell[][]; clues: Clue[] }> => {
+    const { size, wordCount } = difficulties[difficulty];
+    let wordList = await fetchWords(wordCount);
+
+    wordList = shuffleArray(wordList);
+
+    const grid: Cell[][] = Array(size)
+      .fill(null)
+      .map(() =>
+        Array(size)
+          .fill(null)
+          .map(() => ({
+            letter: "",
+            number: null,
+            isStart: { across: false, down: false },
+            isBlack: true,
+          }))
+      );
+
+    const clues: Clue[] = [];
+    let wordNumber = 1;
+
+    const firstWordObj = wordList.shift();
+    if (!firstWordObj) throw new Error("No words to place");
+    const startX =
+      Math.floor(size / 2) - Math.floor(firstWordObj.word.length / 2);
+    const startY = Math.floor(size / 2);
+
+    placeWord(
+      grid,
+      firstWordObj.word,
+      firstWordObj.clue,
+      startX,
+      startY,
+      "across",
+      clues,
+      wordNumber++
+    );
+
+    for (const wordObj of wordList) {
+      let placed = false;
+      const shuffledClues = shuffleArray(clues);
+      for (const existingClue of shuffledClues) {
+        const intersections = findIntersections(
+          wordObj.word,
+          existingClue.answer
+        );
+        const shuffledIntersections = shuffleArray(intersections);
+        for (const intersection of shuffledIntersections) {
+          const coord = getCoordinates(
+            existingClue,
+            intersection.indexExisting,
+            intersection.indexNew
+          );
+          if (
+            canPlaceWordAt(
+              grid,
+              wordObj.word,
+              coord.x,
+              coord.y,
+              oppositeDirection(existingClue.direction)
+            )
+          ) {
+            placeWord(
+              grid,
+              wordObj.word,
+              wordObj.clue,
+              coord.x,
+              coord.y,
+              oppositeDirection(existingClue.direction),
+              clues,
+              wordNumber++
+            );
+            placed = true;
+            break;
+          }
+        }
+        if (placed) break;
+      }
+      if (!placed) {
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const directions: Array<"across" | "down"> = ["across", "down"];
+            for (const dir of directions) {
+              if (canPlaceWordAt(grid, wordObj.word, x, y, dir)) {
+                placeWord(
+                  grid,
+                  wordObj.word,
+                  wordObj.clue,
+                  x,
+                  y,
+                  dir,
+                  clues,
+                  wordNumber++
+                );
+                placed = true;
+                break;
+              }
+            }
+            if (placed) break;
+          }
+          if (placed) break;
+        }
+      }
+    }
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (grid[y][x].letter) {
+          grid[y][x].isBlack = false;
+        }
+      }
+    }
+
+    return { grid, clues };
+  };
 
   useEffect(() => {
     const initializePuzzle = async () => {
@@ -452,7 +424,9 @@ export default function Crossword() {
         setTimer(0);
         setGameStartTime(null);
         setFocusedCell(null);
-        setRevealedClues(new Set()); // Reset revealed clues
+        setRevealedClues(new Set());
+        setHintsUsed(0);
+        setProgress(0);
       } catch (error) {
         console.error("Error generating crossword:", error);
         toast({
@@ -465,35 +439,41 @@ export default function Crossword() {
   }, [difficulty, toast]);
 
   useEffect(() => {
-    if (!completed && gameStartTime !== null) {
+    if (!completed && gameStartTime !== null && !isPaused) {
       const interval = setInterval(() => {
         setTimer(Math.floor((Date.now() - gameStartTime) / 1000));
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [completed, gameStartTime]);
+  }, [completed, gameStartTime, isPaused]);
 
   useEffect(() => {
     localStorage.setItem(
       "crosswordState",
       JSON.stringify({
         puzzle,
-        userInput,
+        userInput: debouncedUserInput,
         timer,
         gameStartTime,
         difficulty,
         isDaily,
         revealedClues: Array.from(revealedClues),
+        hintsUsed,
+        showTimer,
+        showIncorrect,
       })
     );
   }, [
     puzzle,
-    userInput,
+    debouncedUserInput,
     timer,
     gameStartTime,
     difficulty,
     isDaily,
     revealedClues,
+    hintsUsed,
+    showTimer,
+    showIncorrect,
   ]);
 
   useEffect(() => {
@@ -507,46 +487,61 @@ export default function Crossword() {
         difficulty,
         isDaily,
         revealedClues,
+        hintsUsed,
+        showTimer,
+        showIncorrect,
       } = JSON.parse(savedState);
       setPuzzle(puzzle);
       setUserInput(userInput);
       setTimer(timer);
+
       setGameStartTime(gameStartTime);
       setDifficulty(difficulty);
       setIsDaily(isDaily);
       setRevealedClues(new Set(revealedClues));
+      setHintsUsed(hintsUsed);
+      setShowTimer(showTimer);
+      setShowIncorrect(showIncorrect);
     } else {
       resetGame();
     }
   }, []);
 
-  const handleInputChange = (x: number, y: number, value: string) => {
-    if (!gameStartTime) setGameStartTime(Date.now());
-    const newInput = [...userInput];
-    newInput[y][x] = value.toUpperCase();
-    setUserInput(newInput);
+  const handleInputChange = useCallback(
+    (x: number, y: number, value: string) => {
+      if (!gameStartTime) setGameStartTime(Date.now());
+      setUserInput((prev) => {
+        const newInput = [...prev];
+        newInput[y] = [...newInput[y]];
+        newInput[y][x] = value.toUpperCase();
+        return newInput;
+      });
 
-    if (value && direction === "across" && x < puzzle.grid[0].length - 1) {
-      setFocusedCell({ x: x + 1, y });
-    } else if (value && direction === "down" && y < puzzle.grid.length - 1) {
-      setFocusedCell({ x, y: y + 1 });
-    }
+      if (value && direction === "across" && x < puzzle.grid[0].length - 1) {
+        setFocusedCell({ x: x + 1, y });
+      } else if (value && direction === "down" && y < puzzle.grid.length - 1) {
+        setFocusedCell({ x, y: y + 1 });
+      }
 
-    if (
-      newInput.every((row, yIdx) =>
+      const isComplete = puzzle.grid.every((row, yIdx) =>
         row.every(
           (cell, xIdx) =>
-            !puzzle.grid[yIdx][xIdx].letter ||
-            cell === puzzle.grid[yIdx][xIdx].letter
+            !cell.letter ||
+            (userInput[yIdx][xIdx] && userInput[yIdx][xIdx] === cell.letter)
         )
-      )
-    ) {
-      const gameDuration = Math.floor(
-        (Date.now() - (gameStartTime || Date.now())) / 1000
       );
-      handleGameCompletion(gameDuration);
-    }
-  };
+
+      if (isComplete) {
+        const gameDuration = Math.floor(
+          (Date.now() - (gameStartTime || Date.now())) / 1000
+        );
+        handleGameCompletion(gameDuration);
+      }
+
+      updateProgress();
+    },
+    [direction, gameStartTime, puzzle.grid, userInput]
+  );
 
   const handleGameCompletion = (gameDuration: number) => {
     setCompleted(true);
@@ -584,7 +579,7 @@ export default function Crossword() {
 
   const handleCellFocus = (x: number, y: number) => {
     if (focusedCell?.x === x && focusedCell?.y === y) {
-      setDirection((prev) => (prev === "across" ? "down" : "across"));
+      toggleDirection();
     }
     setFocusedCell({ x, y });
   };
@@ -604,6 +599,10 @@ export default function Crossword() {
         break;
       case "ArrowUp":
         if (y > 0) setFocusedCell({ x, y: y - 1 });
+        break;
+      case "Tab":
+        e.preventDefault();
+        toggleDirection();
         break;
       default:
         break;
@@ -630,7 +629,9 @@ export default function Crossword() {
       setFocusedCell(null);
       setIsDaily(daily);
       setDifficulty(newDifficulty);
-      setRevealedClues(new Set()); // Reset revealed clues
+      setRevealedClues(new Set());
+      setHintsUsed(0);
+      setProgress(0);
       toast({
         title: "New Puzzle",
         description: "A new crossword puzzle has been generated!",
@@ -645,16 +646,29 @@ export default function Crossword() {
   };
 
   const getHint = () => {
+    if (hintsUsed >= maxHints) {
+      toast({
+        title: "No Hints Left",
+        description: "You have used all available hints.",
+      });
+      return;
+    }
     if (!focusedCell) return;
     const { x, y } = focusedCell;
     const correctLetter = puzzle.grid[y][x].letter;
     if (correctLetter) {
-      const newInput = [...userInput];
-      newInput[y][x] = correctLetter;
-      setUserInput(newInput);
+      setUserInput((prev) => {
+        const newInput = [...prev];
+        newInput[y] = [...newInput[y]];
+        newInput[y][x] = correctLetter;
+        return newInput;
+      });
+      setHintsUsed((prev) => prev + 1);
       toast({
         title: "Hint",
-        description: `The correct letter is "${correctLetter}"`,
+        description: `Revealed letter at (${x + 1}, ${
+          y + 1
+        }): "${correctLetter}"`,
       });
     }
   };
@@ -662,15 +676,37 @@ export default function Crossword() {
   const sharePuzzle = () => {
     const shareText = `I completed the ${
       isDaily ? "daily " : ""
-    }crossword puzzle on GameHub in ${formatTime(
+    }crossword puzzle in ${formatTime(
       timer
     )}! Can you beat my time? Play now at [YourGameHubURL]`;
-    navigator.clipboard.writeText(shareText).then(() => {
-      toast({
-        title: "Shared!",
-        description: "The puzzle result has been copied to your clipboard.",
+    if (navigator.share) {
+      navigator
+        .share({
+          title: "Crossword Puzzle",
+          text: shareText,
+          url: window.location.href,
+        })
+        .then(() => {
+          toast({
+            title: "Shared!",
+            description: "The puzzle result has been shared successfully.",
+          });
+        })
+        .catch((error) => {
+          console.error("Error sharing:", error);
+          toast({
+            title: "Error",
+            description: "Failed to share the puzzle.",
+          });
+        });
+    } else {
+      navigator.clipboard.writeText(shareText).then(() => {
+        toast({
+          title: "Copied!",
+          description: "Share text has been copied to your clipboard.",
+        });
       });
-    });
+    }
   };
 
   const formatTime = (seconds: number): string => {
@@ -679,7 +715,10 @@ export default function Crossword() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Handler to toggle reveal clues
+  const toggleDirection = () => {
+    setDirection((prev) => (prev === "across" ? "down" : "across"));
+  };
+
   const toggleRevealClue = (clue: Clue) => {
     const clueId = `${clue.direction}-${clue.number}`;
     setRevealedClues((prev) => {
@@ -692,184 +731,452 @@ export default function Crossword() {
       return newSet;
     });
 
-    // Optional: Automatically fill the answer into the grid
     if (!revealedClues.has(clueId)) {
-      const newInput = [...userInput];
-      for (let i = 0; i < clue.answer.length; i++) {
-        const xi = clue.direction === "across" ? clue.startX + i : clue.startX;
-        const yi = clue.direction === "down" ? clue.startY + i : clue.startY;
-        newInput[yi][xi] = clue.answer[i].toUpperCase();
-      }
-      setUserInput(newInput);
+      setUserInput((prev) => {
+        const newInput = [...prev];
+        for (let i = 0; i < clue.answer.length; i++) {
+          const xi =
+            clue.direction === "across" ? clue.startX + i : clue.startX;
+          const yi = clue.direction === "down" ? clue.startY + i : clue.startY;
+          newInput[yi] = [...newInput[yi]];
+          newInput[yi][xi] = clue.answer[i].toUpperCase();
+        }
+        return newInput;
+      });
     }
   };
 
-  return (
-    <div className="flex flex-col lg:flex-row gap-8 p-4">
-      <Card className="w-full lg:w-2/3 max-w-4xl mx-auto p-4">
-        <CardHeader className="mb-2">
-          <CardTitle className="text-2xl sm:text-3xl">
-            {isDaily ? "Daily Crossword" : "Crossword Puzzle"}
-          </CardTitle>
-          <CardDescription className="text-sm sm:text-base">
-            Fill in the crossword puzzle!
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
-            <Badge
-              variant="outline"
-              className="text-sm sm:text-base py-1 px-2 sm:px-3"
-            >
-              Time: {formatTime(timer)}
-            </Badge>
-            <div className="flex items-center space-x-2">
-              <Select
-                value={difficulty}
-                onValueChange={(value: "easy" | "medium" | "hard") =>
-                  setDifficulty(value)
-                }
-                disabled={isDaily}
-              >
-                <SelectTrigger className="w-32 sm:w-40">
-                  <SelectValue placeholder="Select difficulty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => resetGame(false)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-              >
-                <RefreshCw className="h-5 w-5" />
-                <span>New Puzzle</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => resetGame(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-              >
-                <RefreshCw className="h-5 w-5" />
-                <span>Daily Puzzle</span>
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
+  const togglePause = () => {
+    setIsPaused((prev) => !prev);
+    if (isPaused) {
+      setGameStartTime((prev) => (prev ? Date.now() - timer * 1000 : null));
+    }
+  };
+
+  const updateProgress = useCallback(() => {
+    const totalCells = puzzle.grid
+      .flat()
+      .filter((cell) => !cell.isBlack).length;
+    const filledCells = userInput.flat().filter((cell) => cell !== "").length;
+    setProgress((filledCells / totalCells) * 100);
+  }, [puzzle.grid, userInput]);
+
+  useEffect(() => {
+    updateProgress();
+  }, [userInput, updateProgress]);
+
+  const saveGame = () => {
+    const gameState = {
+      puzzle,
+      userInput,
+      timer,
+      difficulty,
+      isDaily,
+      revealedClues: Array.from(revealedClues),
+      hintsUsed,
+      showTimer,
+      showIncorrect,
+    };
+    const blob = new Blob([JSON.stringify(gameState)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "crossword_save.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Game Saved",
+      description: "Your game state has been saved to a file.",
+    });
+  };
+
+  const loadGame = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const gameState = JSON.parse(e.target?.result as string);
+          setPuzzle(gameState.puzzle);
+          setUserInput(gameState.userInput);
+          setTimer(gameState.timer);
+          setDifficulty(gameState.difficulty);
+          setIsDaily(gameState.isDaily);
+          setRevealedClues(new Set(gameState.revealedClues));
+          setHintsUsed(gameState.hintsUsed);
+          setGameStartTime(Date.now() - gameState.timer * 1000);
+          setShowTimer(gameState.showTimer);
+          setShowIncorrect(gameState.showIncorrect);
+          toast({
+            title: "Game Loaded",
+            description: "Your saved game state has been loaded.",
+          });
+        } catch (error) {
+          console.error("Error loading game state:", error);
+          toast({
+            title: "Error",
+            description:
+              "Failed to load the game state. The file might be corrupted.",
+          });
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const acrossClues = useMemo(
+    () => puzzle.clues.filter((clue) => clue.direction === "across"),
+    [puzzle.clues]
+  );
+  const downClues = useMemo(
+    () => puzzle.clues.filter((clue) => clue.direction === "down"),
+    [puzzle.clues]
+  );
+
+  const GridComponent = React.memo(() => (
+    <div
+      className="grid-container"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${puzzle.grid[0]?.length || 0}, 1fr)`,
+        gap: "2px",
+        maxWidth: "100%",
+        overflow: "auto",
+      }}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      ref={gridRef}
+    >
+      {puzzle.grid.map((row, y) =>
+        row.map((cell, x) => {
+          const isFocused = focusedCell?.x === x && focusedCell?.y === y;
+          const userLetter = userInput[y]?.[x] || "";
+          const isCorrect = userLetter === cell.letter;
+          const isIncorrect = userLetter && userLetter !== cell.letter;
+          return (
             <div
-              className="flex-grow overflow-auto"
-              ref={gridRef}
-              onKeyDown={handleKeyDown}
-              tabIndex={0}
+              key={`${x}-${y}`}
+              className={`relative flex items-center justify-center border border-gray-500 ${
+                cell.isBlack ? "bg-black" : "bg-white dark:bg-gray-800"
+              }`}
+              id={`cell-${x}-${y}`}
             >
-              <div
-                className="grid gap-0.5 sm:gap-1"
-                style={{
-                  gridTemplateColumns: `repeat(${
-                    puzzle.grid[0]?.length || 0
-                  }, minmax(30px, 1fr))`, // Minimum cell size
-                }}
-              >
-                {puzzle.grid.map((row, y) =>
-                  row.map((cell, x) => (
-                    <div key={`${x}-${y}`} className="relative">
-                      {cell.number && (
-                        <span className="absolute top-0 left-0 text-[0.5rem] sm:text-xs">
-                          {cell.number}
-                        </span>
-                      )}
-                      <Input
-                        type="text"
-                        inputMode="text"
-                        maxLength={1}
-                        value={userInput[y]?.[x] || ""}
-                        onChange={(e) =>
-                          handleInputChange(x, y, e.target.value)
-                        }
-                        onFocus={() => handleCellFocus(x, y)}
-                        className={`w-full aspect-square text-center p-2 text-base sm:text-lg font-semibold ${
-                          cell.isBlack
-                            ? "bg-black cursor-not-allowed"
-                            : cell.letter
-                            ? "bg-secondary"
-                            : "bg-gray-100 dark:bg-gray-700"
-                        } ${
-                          focusedCell?.x === x && focusedCell?.y === y
-                            ? "ring-2 ring-primary"
-                            : ""
-                        }`}
-                        disabled={cell.isBlack || completed}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
+              {cell.number && (
+                <span className="absolute top-0 left-0 text-[0.5rem] sm:text-xs text-gray-600">
+                  {cell.number}
+                </span>
+              )}
+              {!cell.isBlack && (
+                <Input
+                  type="text"
+                  inputMode="text"
+                  maxLength={1}
+                  value={userLetter}
+                  onChange={(e) => handleInputChange(x, y, e.target.value)}
+                  onFocus={() => handleCellFocus(x, y)}
+                  aria-label={`Cell ${x + 1}, ${y + 1}`}
+                  className={`w-full h-full text-center text-base sm:text-lg font-semibold ${
+                    isCorrect
+                      ? "bg-green-200 dark:bg-green-700"
+                      : isIncorrect && showIncorrect
+                      ? "bg-red-200 dark:bg-red-700"
+                      : "bg-gray-100 dark:bg-gray-700"
+                  } ${
+                    isFocused ? "ring-2 ring-blue-500" : ""
+                  } focus:outline-none`}
+                  disabled={cell.isBlack || completed || isPaused}
+                />
+              )}
             </div>
-          </div>
-          <div className="mt-4 sm:mt-6 flex justify-center space-x-2">
-            <Button
-              onClick={getHint}
-              disabled={completed}
-              className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span>Hint</span>
-            </Button>
-            <Button
-              onClick={sharePuzzle}
-              disabled={!completed}
-              className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <Share2 className="h-5 w-5" />
-              <span>Share</span>
-            </Button>
-            {/* Button to Open Clues Modal (Optional) */}
-            {/* <Button
-              onClick={() => setIsCluesOpen(true)}
-              className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span>Clues</span>
-            </Button> */}
-          </div>
-          <h2 className="font-semibold text-lg sm:text-xl mt-6">
-            Clues &amp; Answers{" "}
-            <span className="text-sm sm:text-base">(Tap to reveal)</span>
-          </h2>
-          <CluesAccordion
-            clues={puzzle.clues}
-            toggleRevealClue={toggleRevealClue}
-            revealedClues={revealedClues}
-          />
-        </CardContent>
-        <CardFooter>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Tip: Use arrow keys to navigate, and tap a cell twice to switch
-            between across and down.
-          </p>
-        </CardFooter>
-      </Card>
-      <div className="w-full lg:w-1/3">
-        <Leaderboard
-          entries={leaderboardEntries}
-          currentUserRank={currentUserRank}
-          gameType="Crossword"
-        />
-      </div>
-      {completed && <Confetti />}
-      {/* Clues Modal (Optional) */}
-      {/* <CluesModal
-        isOpen={isCluesOpen}
-        onClose={() => setIsCluesOpen(false)}
-        clues={puzzle.clues}
-        toggleRevealClue={toggleRevealClue}
-        revealedClues={revealedClues}
-      /> */}
+          );
+        })
+      )}
     </div>
+  ));
+  GridComponent.displayName = "GridComponent";
+
+  const CluesAccordionComponent = React.memo(() => {
+    const renderClues = (clues: Clue[], direction: "across" | "down") => {
+      return clues.map((clue) => {
+        const clueId = `${direction}-${clue.number}`;
+        const isRevealed = revealedClues.has(clueId);
+        return (
+          <p
+            key={clueId}
+            className={`text-xs sm:text-sm cursor-pointer hover:text-blue-500 transition-colors mb-2 ${
+              isRevealed ? "text-green-600 font-medium" : ""
+            }`}
+            onClick={() => toggleRevealClue(clue)}
+          >
+            <span className="font-semibold">{clue.number}.</span> {clue.clue}
+            {isRevealed && (
+              <span className="ml-2 text-green-600">({clue.answer})</span>
+            )}
+          </p>
+        );
+      });
+    };
+
+    return (
+      <div className="space-y-4">
+        <Disclosure>
+          {({ open }) => (
+            <div>
+              <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-gray-900 dark:text-white bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring focus-visible:ring-blue-500 focus-visible:ring-opacity-75">
+                <span>Across</span>
+                <ChevronUpIcon
+                  className={`${
+                    open ? "transform rotate-180" : ""
+                  } w-5 h-5 text-blue-500`}
+                />
+              </Disclosure.Button>
+              <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-700 dark:text-gray-300 max-h-40 overflow-auto">
+                {renderClues(acrossClues, "across")}
+              </Disclosure.Panel>
+            </div>
+          )}
+        </Disclosure>
+
+        <Disclosure>
+          {({ open }) => (
+            <div>
+              <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-gray-900 dark:text-white bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring focus-visible:ring-blue-500 focus-visible:ring-opacity-75">
+                <span>Down</span>
+                <ChevronUpIcon
+                  className={`${
+                    open ? "transform rotate-180" : ""
+                  } w-5 h-5 text-blue-500`}
+                />
+              </Disclosure.Button>
+              <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-700 dark:text-gray-300 max-h-40 overflow-auto">
+                {renderClues(downClues, "down")}
+              </Disclosure.Panel>
+            </div>
+          )}
+        </Disclosure>
+      </div>
+    );
+  });
+  CluesAccordionComponent.displayName = "CluesAccordionComponent";
+
+  const ControlsComponent = React.memo(() => (
+    <div className="flex items-center space-x-2">
+      <Select
+        value={difficulty}
+        onValueChange={(value: "easy" | "medium" | "hard") =>
+          setDifficulty(value)
+        }
+        disabled={isDaily}
+      >
+        <SelectTrigger className="w-32 sm:w-40">
+          <SelectValue placeholder="Select difficulty" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="easy">Easy</SelectItem>
+          <SelectItem value="medium">Medium</SelectItem>
+          <SelectItem value="hard">Hard</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => resetGame(false)}
+        className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+      >
+        <RefreshCw className="h-5 w-5" />
+        <span>New Puzzle</span>
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => resetGame(true)}
+        className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+      >
+        <RefreshCw className="h-5 w-5" />
+        <span>Daily Puzzle</span>
+      </Button>
+    </div>
+  ));
+  ControlsComponent.displayName = "ControlsComponent";
+
+  const LeaderboardComponent = React.memo(() => (
+    <div className="leaderboard bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 className="text-lg font-semibold mb-4">Leaderboard</h2>
+      <table className="w-full text-left table-auto">
+        <thead>
+          <tr>
+            <th className="px-2 py-1">Rank</th>
+            <th className="px-2 py-1">Name</th>
+            <th className="px-2 py-1">Score</th>
+            <th className="px-2 py-1">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leaderboardEntries.map((entry) => (
+            <tr
+              key={entry.rank}
+              className={`${
+                entry.rank === currentUserRank
+                  ? "bg-blue-100 dark:bg-blue-900"
+                  : ""
+              }`}
+            >
+              <td className="px-2 py-1">{entry.rank}</td>
+              <td className="px-2 py-1">{entry.name}</td>
+              <td className="px-2 py-1">{entry.score}</td>
+              <td className="px-2 py-1">{entry.date}</td>
+            </tr>
+          ))}
+          {currentUserRank && currentUserRank > leaderboardEntries.length && (
+            <tr className="bg-blue-100 dark:bg-blue-900">
+              <td className="px-2 py-1">{currentUserRank}</td>
+              <td className="px-2 py-1">You</td>
+              <td className="px-2 py-1">N/A</td>
+              <td className="px-2 py-1">Today</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  ));
+  LeaderboardComponent.displayName = "LeaderboardComponent";
+
+  const SettingsDialog = () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Settings</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Game Settings</DialogTitle>
+          <DialogDescription>
+            Customize your crossword experience
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-timer"
+            checked={showTimer}
+            onCheckedChange={setShowTimer}
+          />
+          <Label htmlFor="show-timer">Show Timer</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-incorrect"
+            checked={showIncorrect}
+            onCheckedChange={setShowIncorrect}
+          />
+          <Label htmlFor="show-incorrect">Show Incorrect Answers</Label>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  return (
+    <ErrorBoundary>
+      <div
+        className={`flex flex-col lg:flex-row gap-8 p-4 min-h-screen transition-colors duration-300`}
+      >
+        <Card className="w-full lg:w-2/3 max-w-4xl mx-auto p-4 shadow-lg">
+          <CardHeader className="mb-2">
+            <CardTitle className="text-2xl sm:text-3xl">
+              {isDaily ? "Daily Crossword" : "Crossword Puzzle"}
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Fill in the crossword puzzle!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
+              {showTimer && (
+                <Badge
+                  variant="outline"
+                  className="text-sm sm:text-base py-1 px-2 sm:px-3"
+                >
+                  Time: {formatTime(timer)}
+                </Badge>
+              )}
+              <ControlsComponent />
+            </div>
+            <Progress value={progress} className="w-full mb-4" />
+            <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
+              <GridComponent />
+            </div>
+            <div className="mt-4 sm:mt-6 flex justify-center space-x-2 flex-wrap">
+              <Button
+                onClick={getHint}
+                disabled={completed || hintsUsed >= maxHints || isPaused}
+                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+              >
+                <HelpCircle className="h-5 w-5" />
+                <span>Hint ({maxHints - hintsUsed} left)</span>
+              </Button>
+              <Button
+                onClick={sharePuzzle}
+                disabled={!completed}
+                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+              >
+                <Share2 className="h-5 w-5" />
+                <span>Share</span>
+              </Button>
+              <Button
+                onClick={togglePause}
+                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+              >
+                {isPaused ? (
+                  <Play className="h-5 w-5" />
+                ) : (
+                  <Pause className="h-5 w-5" />
+                )}
+                <span>{isPaused ? "Resume" : "Pause"}</span>
+              </Button>
+              <Button
+                onClick={saveGame}
+                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+              >
+                <Save className="h-5 w-5" />
+                <span>Save Game</span>
+              </Button>
+              <label htmlFor="load-game" className="cursor-pointer">
+                <span className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base">
+                  <Button>
+                    <Download className="h-5 w-5" />
+                    <span>Load Game</span>
+                  </Button>
+                </span>
+                <input
+                  id="load-game"
+                  type="file"
+                  accept=".json"
+                  onChange={loadGame}
+                  className="hidden"
+                />
+              </label>
+              <SettingsDialog />
+            </div>
+            <h2 className="font-semibold text-lg sm:text-xl mt-6">
+              Clues &amp; Answers{" "}
+              <span className="text-sm sm:text-base">(Tap to reveal)</span>
+            </h2>
+            <CluesAccordionComponent />
+          </CardContent>
+          <CardFooter>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Tip: Use arrow keys to navigate, and tap a cell twice to switch
+              between across and down.
+            </p>
+          </CardFooter>
+        </Card>
+        <div className="w-full lg:w-1/3">
+          <LeaderboardComponent />
+        </div>
+        {completed && <Confetti />}
+      </div>
+    </ErrorBoundary>
   );
 }
