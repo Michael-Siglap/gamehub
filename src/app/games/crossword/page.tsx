@@ -28,15 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { incrementGamesPlayed, updateTimePlayed } from "@/utils/userStats";
 import { Confetti } from "@/components/confetti";
-import {
-  Share2,
-  HelpCircle,
-  RefreshCw,
-  Pause,
-  Play,
-  Save,
-  Download,
-} from "lucide-react";
+import { Share2, HelpCircle, RefreshCw, Pause, Play } from "lucide-react";
 import { Disclosure } from "@headlessui/react";
 import { ChevronUpIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -761,73 +753,6 @@ export default function Crossword() {
     setProgress((filledCells / totalCells) * 100);
   }, [puzzle.grid, userInput]);
 
-  useEffect(() => {
-    updateProgress();
-  }, [userInput, updateProgress]);
-
-  const saveGame = () => {
-    const gameState = {
-      puzzle,
-      userInput,
-      timer,
-      difficulty,
-      isDaily,
-      revealedClues: Array.from(revealedClues),
-      hintsUsed,
-      showTimer,
-      showIncorrect,
-    };
-    const blob = new Blob([JSON.stringify(gameState)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "crossword_save.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({
-      title: "Game Saved",
-      description: "Your game state has been saved to a file.",
-    });
-  };
-
-  const loadGame = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const gameState = JSON.parse(e.target?.result as string);
-          setPuzzle(gameState.puzzle);
-          setUserInput(gameState.userInput);
-          setTimer(gameState.timer);
-          setDifficulty(gameState.difficulty);
-          setIsDaily(gameState.isDaily);
-          setRevealedClues(new Set(gameState.revealedClues));
-          setHintsUsed(gameState.hintsUsed);
-          setGameStartTime(Date.now() - gameState.timer * 1000);
-          setShowTimer(gameState.showTimer);
-          setShowIncorrect(gameState.showIncorrect);
-          toast({
-            title: "Game Loaded",
-            description: "Your saved game state has been loaded.",
-          });
-        } catch (error) {
-          console.error("Error loading game state:", error);
-          toast({
-            title: "Error",
-            description:
-              "Failed to load the game state. The file might be corrupted.",
-          });
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
   const acrossClues = useMemo(
     () => puzzle.clues.filter((clue) => clue.direction === "across"),
     [puzzle.clues]
@@ -1135,28 +1060,6 @@ export default function Crossword() {
                 )}
                 <span>{isPaused ? "Resume" : "Pause"}</span>
               </Button>
-              <Button
-                onClick={saveGame}
-                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-              >
-                <Save className="h-5 w-5" />
-                <span>Save Game</span>
-              </Button>
-              <label htmlFor="load-game" className="cursor-pointer">
-                <span className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base">
-                  <Button>
-                    <Download className="h-5 w-5" />
-                    <span>Load Game</span>
-                  </Button>
-                </span>
-                <input
-                  id="load-game"
-                  type="file"
-                  accept=".json"
-                  onChange={loadGame}
-                  className="hidden"
-                />
-              </label>
               <SettingsDialog />
             </div>
             <h2 className="font-semibold text-lg sm:text-xl mt-6">
