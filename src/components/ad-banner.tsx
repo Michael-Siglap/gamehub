@@ -59,10 +59,10 @@ export const AdBanner = () => {
                 ) : (
                   <>
                     <h2 className="text-white text-lg font-semibold truncate">
-                      Explore More on NY Times
+                      Explore Best Cities of the World
                     </h2>
                     <p className="mt-1 text-sm text-blue-100 truncate">
-                      Get the latest updates on global news and more!
+                      Your AI built best city finder!
                     </p>
                   </>
                 )}
@@ -77,14 +77,14 @@ export const AdBanner = () => {
                     href={
                       currentAd === 1
                         ? "https://hikarinova.com"
-                        : "https://nytimes.com"
+                        : "https://bestcityindex.com"
                     }
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={handleClick}
                     className="flex items-center"
                   >
-                    {currentAd === 1 ? "Learn More" : "Visit NY Times"}
+                    {currentAd === 1 ? "Learn More" : "Visit Best City Index"}
                     <ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
                     <span className="sr-only">(opens in a new tab)</span>
                   </Link>

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { cn } from "@/lib/utils";
+import { AdBanner } from "@/components/ad-banner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
           "min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 text-foreground antialiased"
         )}
       >
+        <AdBanner />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
