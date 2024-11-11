@@ -43,7 +43,10 @@ export default function Dashboard() {
   const weeklyProgress = (stats.weeklyGamesPlayed / 10) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 p-8">
+    <div
+      className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 p-8"
+      suppressHydrationWarning
+    >
       <motion.h1
         className="text-4xl font-bold text-white mb-8"
         initial={{ opacity: 0, y: -50 }}
