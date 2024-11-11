@@ -122,6 +122,7 @@ export default function TicTacToe() {
       // Show replay prompt
       setShowReplayPrompt(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner]);
 
   // 2. useEffect for AI difficulty progression
@@ -137,6 +138,7 @@ export default function TicTacToe() {
         setAIDifficulty("hard");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerConsecutiveWins]);
 
   // 3. useEffect for AI move
@@ -155,6 +157,7 @@ export default function TicTacToe() {
       }, 500); // Delay AI move for better UX
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [xIsNext, winner, board, boardSize, winCondition]);
 
   const handleClick = (index: number) => {

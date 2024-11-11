@@ -29,7 +29,7 @@ export function Leaderboard({
   gameType,
 }: LeaderboardProps) {
   return (
-    <Card className="w-full max-w-md">
+    <Card className=" w-full max-w-md bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 backdrop-blur-md border-none">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">
           {gameType} Leaderboard
@@ -38,11 +38,19 @@ export function Leaderboard({
       <CardContent>
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Rank</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead className="text-right">Date</TableHead>
+            <TableRow className="text-xs sm:text-sm text-gray-200">
+              <TableHead className="w-[100px] text-xs sm:text-sm text-gray-200">
+                Rank
+              </TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-200">
+                Name
+              </TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-200">
+                Score
+              </TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-200">
+                Date
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

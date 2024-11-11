@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { AdBanner } from "@/components/ad-banner";
+import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GameTap",
-  description: "A collection of simple online games",
+  title: "GameHub",
+  description: "A fun and engaging game hub for all!",
 };
 
 export default function RootLayout({
@@ -21,22 +22,33 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.className} bg-gradient-to-br from-background to-secondary`}
+        className={cn(
+          inter.className,
+          "min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 text-foreground antialiased"
+        )}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex flex-col min-h-screen">
+          <div className="relative flex min-h-screen flex-col">
             <Header />
-            <AdBanner />
-            <main className="flex-grow container mx-auto px-4 py-8 relative">
-              <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none" />
-              <div className="relative z-10">{children}</div>
-            </main>
+            <div className="flex-1">
+              <div className="container mx-auto p-4">{children}</div>
+            </div>
             <Footer />
+          </div>
+          <Toaster />
+          <div className="fixed inset-0 pointer-events-none">
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+              <div className="bubble"></div>
+              <div className="bubble"></div>
+              <div className="bubble"></div>
+              <div className="bubble"></div>
+              <div className="bubble"></div>
+            </div>
           </div>
         </ThemeProvider>
       </body>

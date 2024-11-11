@@ -1,3 +1,5 @@
+// src/app/games/tetris/page.tsx
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { incrementGamesPlayed, updateTimePlayed } from "@/utils/userStats";
 import { Confetti } from "@/components/confetti";
+import { motion } from "framer-motion";
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -244,59 +247,101 @@ export default function Tetris() {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-3xl">Tetris</CardTitle>
-        <CardDescription>Clear lines to score points!</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4 flex justify-between items-center">
-          <Badge variant="outline" className="text-lg py-1 px-3">
-            Score: {score}
-          </Badge>
-          <Button variant="outline" size="sm" onClick={resetGame}>
-            {gameOver ? "New Game" : "Reset Game"}
-          </Button>
-        </div>
-        <div
-          className="grid grid-cols-10 gap-1 mb-4"
-          style={{ width: "300px", margin: "0 auto" }}
-        >
-          {board.map((row, rowIndex) =>
-            row.map((cell, cellIndex) => (
-              <div
-                key={`${rowIndex}-${cellIndex}`}
-                className={`w-7 h-7 border ${
-                  cell ||
-                  (currentPiece &&
-                    currentPosition.y <= rowIndex &&
-                    rowIndex < currentPosition.y + currentPiece.length &&
-                    currentPosition.x <= cellIndex &&
-                    cellIndex < currentPosition.x + currentPiece[0].length &&
-                    currentPiece[rowIndex - currentPosition.y][
-                      cellIndex - currentPosition.x
-                    ])
-                    ? currentColour // Apply the current piece's colour
-                    : "bg-secondary"
-                }`}
-              />
-            ))
-          )}
-        </div>
-        <div className="flex justify-center space-x-2">
-          <Button onClick={moveLeft}>Left</Button>
-          <Button onClick={moveDown}>Down</Button>
-          <Button onClick={rotate}>Rotate</Button>
-          <Button onClick={moveRight}>Right</Button>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <p className="text-sm text-muted-foreground">
-          Use the buttons or the keyboard (arrow keys and space) to move and
-          rotate the pieces. Clear lines to score points!
-        </p>
-      </CardFooter>
+    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="w-full max-w-2xl mx-auto bg-white/10 backdrop-blur-md border-none">
+          <CardHeader>
+            <CardTitle className="text-3xl text-white">Tetris</CardTitle>
+            <CardDescription className="text-gray-200">
+              Clear lines to score points!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex justify-between items-center">
+              <Badge
+                variant="outline"
+                className="text-lg py-1 px-3 bg-white/20 text-white"
+              >
+                Score: {score}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetGame}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                {gameOver ? "New Game" : "Reset Game"}
+              </Button>
+            </div>
+            <div
+              className="grid grid-cols-10 gap-1 mb-4 bg-black/50 p-2 rounded-lg"
+              style={{ width: "300px", margin: "0 auto" }}
+            >
+              {board.map((row, rowIndex) =>
+                row.map((cell, cellIndex) => (
+                  <motion.div
+                    key={`${rowIndex}-${cellIndex}`}
+                    className={`w-7 h-7 border ${
+                      cell ||
+                      (currentPiece &&
+                        currentPosition.y <= rowIndex &&
+                        rowIndex < currentPosition.y + currentPiece.length &&
+                        currentPosition.x <= cellIndex &&
+                        cellIndex <
+                          currentPosition.x + currentPiece[0].length &&
+                        currentPiece[rowIndex - currentPosition.y][
+                          cellIndex - currentPosition.x
+                        ])
+                        ? currentColour
+                        : "bg-gray-800"
+                    }`}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                ))
+              )}
+            </div>
+            <div className="flex justify-center space-x-2">
+              <Button
+                onClick={moveLeft}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                Left
+              </Button>
+              <Button
+                onClick={moveDown}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                Down
+              </Button>
+              <Button
+                onClick={rotate}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                Rotate
+              </Button>
+              <Button
+                onClick={moveRight}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                Right
+              </Button>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <p className="text-sm text-gray-200">
+              Use the buttons or the keyboard (arrow keys and space) to move and
+              rotate the pieces. Clear lines to score points!
+            </p>
+          </CardFooter>
+        </Card>
+      </motion.div>
       {showConfetti && <Confetti />}
-    </Card>
+    </div>
   );
 }

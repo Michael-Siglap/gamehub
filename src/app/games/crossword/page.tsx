@@ -1,3 +1,5 @@
+// src/app/games/crossword/page.tsx
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -26,6 +28,7 @@ import { Share2, HelpCircle, RefreshCw } from "lucide-react";
 import { Leaderboard } from "@/components/leaderboard";
 import { Disclosure } from "@headlessui/react";
 import { ChevronUpIcon } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Word {
   word: string;
@@ -304,102 +307,6 @@ const placeWord = (
 const oppositeDirection = (direction: "across" | "down"): "across" | "down" =>
   direction === "across" ? "down" : "across";
 
-function CluesAccordion({
-  clues,
-  toggleRevealClue,
-  revealedClues,
-}: {
-  clues: Clue[];
-  toggleRevealClue: (clue: Clue) => void;
-  revealedClues: Set<string>;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Across Clues Accordion */}
-      <Disclosure>
-        {({ open }) => (
-          <div>
-            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-gray-900 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
-              <span>Across</span>
-              <ChevronUpIcon
-                className={`${
-                  open ? "transform rotate-180" : ""
-                } w-5 h-5 text-purple-500`}
-              />
-            </Disclosure.Button>
-            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-700 max-h-40 overflow-auto">
-              {clues
-                .filter((clue: Clue) => clue.direction === "across")
-                .map((clue: Clue) => {
-                  const clueId = `across-${clue.number}`;
-                  const isRevealed = revealedClues.has(clueId);
-                  return (
-                    <p
-                      key={clueId}
-                      className={`text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors mb-2 ${
-                        isRevealed ? "text-green-600 font-medium" : ""
-                      }`}
-                      onClick={() => toggleRevealClue(clue)}
-                    >
-                      <span className="font-semibold">{clue.number}.</span>{" "}
-                      {clue.clue}
-                      {isRevealed && (
-                        <span className="ml-2 text-green-600">
-                          {`(${clue.answer})`}
-                        </span>
-                      )}
-                    </p>
-                  );
-                })}
-            </Disclosure.Panel>
-          </div>
-        )}
-      </Disclosure>
-
-      {/* Down Clues Accordion */}
-      <Disclosure>
-        {({ open }) => (
-          <div>
-            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-gray-900 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
-              <span>Down</span>
-              <ChevronUpIcon
-                className={`${
-                  open ? "transform rotate-180" : ""
-                } w-5 h-5 text-purple-500`}
-              />
-            </Disclosure.Button>
-            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-700 max-h-40 overflow-auto">
-              {clues
-                .filter((clue: Clue) => clue.direction === "down")
-                .map((clue: Clue) => {
-                  const clueId = `down-${clue.number}`;
-                  const isRevealed = revealedClues.has(clueId);
-                  return (
-                    <p
-                      key={clueId}
-                      className={`text-xs sm:text-sm cursor-pointer hover:text-primary transition-colors mb-2 ${
-                        isRevealed ? "text-green-600 font-medium" : ""
-                      }`}
-                      onClick={() => toggleRevealClue(clue)}
-                    >
-                      <span className="font-semibold">{clue.number}.</span>{" "}
-                      {clue.clue}
-                      {isRevealed && (
-                        <span className="ml-2 text-green-600">
-                          {`(${clue.answer})`}
-                        </span>
-                      )}
-                    </p>
-                  );
-                })}
-            </Disclosure.Panel>
-          </div>
-        )}
-      </Disclosure>
-    </div>
-  );
-}
-
 export default function Crossword() {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
     "medium"
@@ -518,6 +425,7 @@ export default function Crossword() {
     } else {
       resetGame();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInputChange = (x: number, y: number, value: string) => {
@@ -705,171 +613,259 @@ export default function Crossword() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-4">
-      <Card className="w-full lg:w-2/3 max-w-4xl mx-auto p-4">
-        <CardHeader className="mb-2">
-          <CardTitle className="text-2xl sm:text-3xl">
-            {isDaily ? "Daily Crossword" : "Crossword Puzzle"}
-          </CardTitle>
-          <CardDescription className="text-sm sm:text-base">
-            Fill in the crossword puzzle!
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
-            <Badge
-              variant="outline"
-              className="text-sm sm:text-base py-1 px-2 sm:px-3"
-            >
-              Time: {formatTime(timer)}
-            </Badge>
-            <div className="flex items-center space-x-2">
-              <Select
-                value={difficulty}
-                onValueChange={(value: "easy" | "medium" | "hard") =>
-                  setDifficulty(value)
-                }
-                disabled={isDaily}
-              >
-                <SelectTrigger className="w-32 sm:w-40">
-                  <SelectValue placeholder="Select difficulty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
+    <div className="min-h-screen bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 p-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col lg:flex-row gap-8"
+        suppressHydrationWarning
+      >
+        <Card className="w-full lg:w-2/3 max-w-4xl mx-auto p-4 bg-white/10 backdrop-blur-md border-none">
+          <CardHeader className="mb-2">
+            <CardTitle className="text-2xl sm:text-3xl text-white">
+              {isDaily ? "Daily Crossword" : "Crossword Puzzle"}
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base text-gray-200">
+              Fill in the crossword puzzle!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
+              <Badge
                 variant="outline"
-                size="sm"
-                onClick={() => resetGame(false)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
+                className="text-sm sm:text-base py-1 px-2 sm:px-3 bg-white/20 text-white"
               >
-                <RefreshCw className="h-5 w-5" />
-                <span>New Puzzle</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => resetGame(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-              >
-                <RefreshCw className="h-5 w-5" />
-                <span>Daily Puzzle</span>
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
-            <div
-              className="flex-grow overflow-auto"
-              ref={gridRef}
-              onKeyDown={handleKeyDown}
-              tabIndex={0}
-            >
-              <div
-                className="grid gap-0.5 sm:gap-1"
-                style={{
-                  gridTemplateColumns: `repeat(${
-                    puzzle.grid[0]?.length || 0
-                  }, minmax(30px, 1fr))`, // Minimum cell size
-                }}
-              >
-                {puzzle.grid.map((row, y) =>
-                  row.map((cell, x) => (
-                    <div key={`${x}-${y}`} className="relative">
-                      {cell.number && (
-                        <span className="absolute top-0 left-0 text-[0.5rem] sm:text-xs">
-                          {cell.number}
-                        </span>
-                      )}
-                      <Input
-                        type="text"
-                        inputMode="text"
-                        maxLength={1}
-                        value={userInput[y]?.[x] || ""}
-                        onChange={(e) =>
-                          handleInputChange(x, y, e.target.value)
-                        }
-                        onFocus={() => handleCellFocus(x, y)}
-                        className={`w-full aspect-square text-center p-2 text-base sm:text-lg font-semibold ${
-                          cell.isBlack
-                            ? "bg-black cursor-not-allowed"
-                            : cell.letter
-                            ? "bg-secondary"
-                            : "bg-gray-100 dark:bg-gray-700"
-                        } ${
-                          focusedCell?.x === x && focusedCell?.y === y
-                            ? "ring-2 ring-primary"
-                            : ""
-                        }`}
-                        disabled={cell.isBlack || completed}
-                      />
-                    </div>
-                  ))
-                )}
+                Time: {formatTime(timer)}
+              </Badge>
+              <div className="flex items-center space-x-2">
+                <Select
+                  value={difficulty}
+                  onValueChange={(value: "easy" | "medium" | "hard") =>
+                    setDifficulty(value)
+                  }
+                  disabled={isDaily}
+                >
+                  <SelectTrigger className="w-32 sm:w-40 bg-white/20 text-white border-none">
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => resetGame(false)}
+                  className="bg-white/20 text-white hover:bg-white/30"
+                >
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  <span>New Puzzle</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => resetGame(true)}
+                  className="bg-white/20 text-white hover:bg-white/30"
+                >
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  <span>Daily Puzzle</span>
+                </Button>
               </div>
             </div>
-          </div>
-          <div className="mt-4 sm:mt-6 flex justify-center space-x-2">
-            <Button
-              onClick={getHint}
-              disabled={completed}
-              className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span>Hint</span>
-            </Button>
-            <Button
-              onClick={sharePuzzle}
-              disabled={!completed}
-              className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <Share2 className="h-5 w-5" />
-              <span>Share</span>
-            </Button>
-            {/* Button to Open Clues Modal (Optional) */}
-            {/* <Button
-              onClick={() => setIsCluesOpen(true)}
-              className="flex items-center space-x-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span>Clues</span>
-            </Button> */}
-          </div>
-          <h2 className="font-semibold text-lg sm:text-xl mt-6">
-            Clues &amp; Answers{" "}
-            <span className="text-sm sm:text-base">(Tap to reveal)</span>
-          </h2>
-          <CluesAccordion
-            clues={puzzle.clues}
-            toggleRevealClue={toggleRevealClue}
-            revealedClues={revealedClues}
+            <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
+              <div
+                className="flex-grow overflow-auto bg-white/5 rounded-lg p-2"
+                ref={gridRef}
+                onKeyDown={handleKeyDown}
+                tabIndex={0}
+              >
+                <div
+                  className="grid gap-0.5 sm:gap-1"
+                  style={{
+                    gridTemplateColumns: `repeat(${
+                      puzzle.grid[0]?.length || 0
+                    }, minmax(30px, 1fr))`,
+                  }}
+                >
+                  {puzzle.grid.map((row, y) =>
+                    row.map((cell, x) => (
+                      <div key={`${x}-${y}`} className="relative aspect-square">
+                        {cell.number && (
+                          <span className="absolute top-0 left-0 text-[0.5rem] sm:text-xs text-gray-300">
+                            {cell.number}
+                          </span>
+                        )}
+                        <Input
+                          type="text"
+                          inputMode="text"
+                          maxLength={1}
+                          value={userInput[y]?.[x] || ""}
+                          onChange={(e) =>
+                            handleInputChange(x, y, e.target.value)
+                          }
+                          onFocus={() => handleCellFocus(x, y)}
+                          className={`w-full h-full text-center p-0 text-base sm:text-lg font-semibold ${
+                            cell.isBlack
+                              ? "bg-black cursor-not-allowed"
+                              : cell.letter
+                              ? "bg-green-200 dark:bg-green-700"
+                              : "bg-white/50 dark:bg-gray-700"
+                          } ${
+                            focusedCell?.x === x && focusedCell?.y === y
+                              ? "ring-2 ring-blue-500"
+                              : ""
+                          } border-none`}
+                          disabled={cell.isBlack || completed}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 sm:mt-6 flex justify-center space-x-2">
+              <Button
+                onClick={getHint}
+                disabled={completed}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                <HelpCircle className="h-5 w-5 mr-2" />
+                <span>Hint</span>
+              </Button>
+              <Button
+                onClick={sharePuzzle}
+                disabled={!completed}
+                className="bg-white/20 text-white hover:bg-white/30"
+              >
+                <Share2 className="h-5 w-5 mr-2" />
+                <span>Share</span>
+              </Button>
+            </div>
+            <h2 className="font-semibold text-lg sm:text-xl mt-6 text-white">
+              Clues &amp; Answers{" "}
+              <span className="text-sm sm:text-base text-gray-200">
+                (Tap to reveal)
+              </span>
+            </h2>
+            <CluesAccordion
+              clues={puzzle.clues}
+              toggleRevealClue={toggleRevealClue}
+              revealedClues={revealedClues}
+            />
+          </CardContent>
+          <CardFooter>
+            <p className="text-xs sm:text-sm text-gray-200">
+              Tip: Use arrow keys to navigate, and tap a cell twice to switch
+              between across and down.
+            </p>
+          </CardFooter>
+        </Card>
+        <div className="w-full lg:w-1/3">
+          <Leaderboard
+            entries={leaderboardEntries}
+            currentUserRank={currentUserRank}
+            gameType="Crossword"
           />
-        </CardContent>
-        <CardFooter>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Tip: Use arrow keys to navigate, and tap a cell twice to switch
-            between across and down.
-          </p>
-        </CardFooter>
-      </Card>
-      <div className="w-full lg:w-1/3">
-        <Leaderboard
-          entries={leaderboardEntries}
-          currentUserRank={currentUserRank}
-          gameType="Crossword"
-        />
-      </div>
+        </div>
+      </motion.div>
       {completed && <Confetti />}
-      {/* Clues Modal (Optional) */}
-      {/* <CluesModal
-        isOpen={isCluesOpen}
-        onClose={() => setIsCluesOpen(false)}
-        clues={puzzle.clues}
-        toggleRevealClue={toggleRevealClue}
-        revealedClues={revealedClues}
-      /> */}
     </div>
+  );
+}
+
+function CluesAccordion({
+  clues,
+  toggleRevealClue,
+  revealedClues,
+}: {
+  clues: Clue[];
+  toggleRevealClue: (clue: Clue) => void;
+  revealedClues: Set<string>;
+}) {
+  return (
+    <div className="space-y-4">
+      <Disclosure>
+        {({ open }) => (
+          <div>
+            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-white bg-white/20 rounded-lg hover:bg-white/30 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
+              <span>Across</span>
+              <ChevronUpIcon
+                className={`${
+                  open ? "transform rotate-180" : ""
+                } w-5 h-5 text-purple-300`}
+              />
+            </Disclosure.Button>
+            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-200 max-h-40 overflow-auto">
+              {clues
+                .filter((clue) => clue.direction === "across")
+                .map((clue) => (
+                  <ClueItem
+                    key={`across-${clue.number}`}
+                    clue={clue}
+                    isRevealed={revealedClues.has(`across-${clue.number}`)}
+                    toggleReveal={() => toggleRevealClue(clue)}
+                  />
+                ))}
+            </Disclosure.Panel>
+          </div>
+        )}
+      </Disclosure>
+
+      <Disclosure>
+        {({ open }) => (
+          <div>
+            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm font-medium text-left text-white bg-white/20 rounded-lg hover:bg-white/30 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75">
+              <span>Down</span>
+              <ChevronUpIcon
+                className={`${
+                  open ? "transform rotate-180" : ""
+                } w-5 h-5 text-purple-300`}
+              />
+            </Disclosure.Button>
+            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-200 max-h-40 overflow-auto">
+              {clues
+                .filter((clue) => clue.direction === "down")
+                .map((clue) => (
+                  <ClueItem
+                    key={`down-${clue.number}`}
+                    clue={clue}
+                    isRevealed={revealedClues.has(`down-${clue.number}`)}
+                    toggleReveal={() => toggleRevealClue(clue)}
+                  />
+                ))}
+            </Disclosure.Panel>
+          </div>
+        )}
+      </Disclosure>
+    </div>
+  );
+}
+
+function ClueItem({
+  clue,
+  isRevealed,
+  toggleReveal,
+}: {
+  clue: Clue;
+  isRevealed: boolean;
+  toggleReveal: () => void;
+}) {
+  return (
+    <motion.p
+      className={`text-xs sm:text-sm cursor-pointer hover:text-purple-300 transition-colors mb-2 ${
+        isRevealed ? "text-green-300 font-medium" : ""
+      }`}
+      onClick={toggleReveal}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <span className="font-semibold">{clue.number}.</span> {clue.clue}
+      {isRevealed && (
+        <span className="ml-2 text-green-300">({clue.answer})</span>
+      )}
+    </motion.p>
   );
 }
