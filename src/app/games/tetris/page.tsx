@@ -1,21 +1,35 @@
-// src/app/games/tetris/page.tsx
-
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { incrementGamesPlayed, updateTimePlayed } from "@/utils/userStats";
 import { Confetti } from "@/components/confetti";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowDown,
+  RotateCcw,
+  PauseCircle,
+} from "lucide-react";
+
+import block1 from "@/assets/kenney/block1.png";
+import block2 from "@/assets/kenney/block2.png";
+import block3 from "@/assets/kenney/block3.png";
+import block4 from "@/assets/kenney/block4.png";
+import block5 from "@/assets/kenney/block5.png";
+import block6 from "@/assets/kenney/block6.png";
+import block7 from "@/assets/kenney/block7.png";
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -47,29 +61,74 @@ const TETROMINOS = [
   ],
 ];
 
-const TETROMINO_COLOURS = [
-  "bg-red-500", // Colour for Tetromino 1
-  "bg-blue-500", // Colour for Tetromino 2
-  "bg-green-500", // Colour for Tetromino 3
-  "bg-yellow-500", // Colour for Tetromino 4
-  "bg-purple-500", // Colour for Tetromino 5
-  "bg-orange-500", // Colour for Tetromino 6
-  "bg-teal-500", // Colour for Tetromino 7
+const TETROMINO_IMAGES = [
+  block1.src,
+  block2.src,
+  block3.src,
+  block4.src,
+  block5.src,
+  block6.src,
+  block7.src,
 ];
+
+// New component for particle effects
+const Particles = ({ count }: { count: number }) => {
+  const particles = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      x: Math.random() * 300,
+      y: Math.random() * 600,
+      size: Math.random() * 4 + 2,
+    }));
+  }, [count]);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className="absolute bg-yellow-400 rounded-full"
+          style={{
+            width: particle.size,
+            height: particle.size,
+            x: particle.x,
+            y: particle.y,
+          }}
+          animate={{
+            y: [particle.y, particle.y - 100],
+            opacity: [1, 0],
+          }}
+          transition={{
+            duration: 1,
+            ease: "easeOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 export default function Tetris() {
   const [board, setBoard] = useState(
     Array(BOARD_HEIGHT)
       .fill(null)
-      .map(() => Array(BOARD_WIDTH).fill(0))
+      .map(() => Array(BOARD_WIDTH).fill(null))
   );
   const [currentPiece, setCurrentPiece] = useState<number[][] | null>(null);
   const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 });
-  const [currentColour, setCurrentColour] = useState<string>(""); // Store the colour for the current piece
+  const [currentImage, setCurrentImage] = useState<string>("");
   const [score, setScore] = useState(0);
+  const [level, setLevel] = useState(1);
   const [gameOver, setGameOver] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [heldPiece, setHeldPiece] = useState<number | null>(null);
+  const [canHold, setCanHold] = useState(true);
+  const [nextPiece, setNextPiece] = useState<number>(
+    Math.floor(Math.random() * TETROMINOS.length)
+  );
+  const [highScore, setHighScore] = useState(0);
+  const [showParticles, setShowParticles] = useState(false);
 
   const canMoveTo = useCallback(
     (x: number, y: number, piece: number[][]) => {
@@ -94,21 +153,35 @@ export default function Tetris() {
     [board]
   );
 
-  const clearLines = useCallback((board: number[][]) => {
+  const clearLines = useCallback(() => {
     let linesCleared = 0;
     const newBoard = board.filter((row) => {
-      if (row.every((cell) => cell === 1)) {
+      if (row.every((cell) => cell !== null)) {
         linesCleared++;
         return false;
       }
       return true;
     });
     while (newBoard.length < BOARD_HEIGHT) {
-      newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+      newBoard.unshift(Array(BOARD_WIDTH).fill(null));
     }
     setBoard(newBoard);
-    setScore((prev) => prev + linesCleared * 100);
-  }, []);
+    setScore((prev) => {
+      const newScore = prev + linesCleared * 100 * level;
+      if (newScore > highScore) {
+        setHighScore(newScore);
+        localStorage.setItem("tetrisHighScore", newScore.toString());
+      }
+      return newScore;
+    });
+    if (linesCleared > 0) {
+      setLevel((prev) =>
+        Math.min(10, prev + Math.floor(linesCleared / 10) + 1)
+      );
+      setShowParticles(true);
+      setTimeout(() => setShowParticles(false), 1000);
+    }
+  }, [board, level, highScore]);
 
   const placePiece = useCallback(() => {
     if (!currentPiece) return;
@@ -122,24 +195,33 @@ export default function Tetris() {
             setGameOver(true);
             return;
           }
-          newBoard[newY][newX] = 1;
+          newBoard[newY][newX] = currentImage;
         }
       }
     }
     setBoard(newBoard);
-    clearLines(newBoard); // Now properly memoized
-  }, [board, currentPiece, currentPosition, clearLines]);
+    clearLines();
+  }, [board, currentPiece, currentPosition, currentImage, clearLines]);
 
   const spawnPiece = useCallback(() => {
-    const newPieceIndex = Math.floor(Math.random() * TETROMINOS.length);
+    const newPieceIndex = nextPiece;
     const newPiece = TETROMINOS[newPieceIndex];
-    setCurrentPiece(newPiece);
-    setCurrentColour(TETROMINO_COLOURS[newPieceIndex]); // Set the colour based on the piece index
-    setCurrentPosition({
+    const newPosition = {
       x: Math.floor(BOARD_WIDTH / 2) - Math.floor(newPiece[0].length / 2),
       y: 0,
-    });
-  }, []);
+    };
+
+    if (!canMoveTo(newPosition.x, newPosition.y, newPiece)) {
+      setGameOver(true);
+      return;
+    }
+
+    setCurrentPiece(newPiece);
+    setCurrentImage(TETROMINO_IMAGES[newPieceIndex]);
+    setCurrentPosition(newPosition);
+    setNextPiece(Math.floor(Math.random() * TETROMINOS.length));
+    setCanHold(true);
+  }, [nextPiece, canMoveTo]);
 
   const moveDown = useCallback(() => {
     if (!currentPiece) return;
@@ -179,6 +261,29 @@ export default function Tetris() {
     }
   }, [currentPiece, currentPosition, canMoveTo]);
 
+  const holdPiece = useCallback(() => {
+    if (!canHold) return;
+    if (heldPiece === null) {
+      setHeldPiece(TETROMINOS.findIndex((t) => t === currentPiece));
+      spawnPiece();
+    } else {
+      const temp = currentPiece;
+      setCurrentPiece(TETROMINOS[heldPiece]);
+      setCurrentImage(TETROMINO_IMAGES[heldPiece]);
+      setHeldPiece(TETROMINOS.findIndex((t) => t === temp));
+    }
+    setCanHold(false);
+  }, [canHold, heldPiece, currentPiece, spawnPiece]);
+
+  const getGhostPosition = useCallback(() => {
+    if (!currentPiece) return null;
+    let ghostY = currentPosition.y;
+    while (canMoveTo(currentPosition.x, ghostY + 1, currentPiece)) {
+      ghostY++;
+    }
+    return { x: currentPosition.x, y: ghostY };
+  }, [currentPiece, currentPosition, canMoveTo]);
+
   useEffect(() => {
     if (!gameStartTime) {
       setGameStartTime(Date.now());
@@ -186,9 +291,11 @@ export default function Tetris() {
     if (!currentPiece && !gameOver) {
       spawnPiece();
     }
-    const interval = setInterval(moveDown, 1000);
-    return () => clearInterval(interval);
-  }, [currentPiece, gameOver, spawnPiece, moveDown, gameStartTime]);
+    if (!gameOver) {
+      const interval = setInterval(moveDown, 1000 / level);
+      return () => clearInterval(interval);
+    }
+  }, [currentPiece, gameOver, spawnPiece, moveDown, gameStartTime, level]);
 
   useEffect(() => {
     if (gameOver) {
@@ -203,6 +310,13 @@ export default function Tetris() {
     }
   }, [gameOver, gameStartTime]);
 
+  useEffect(() => {
+    const storedHighScore = localStorage.getItem("tetrisHighScore");
+    if (storedHighScore) {
+      setHighScore(parseInt(storedHighScore, 10));
+    }
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (gameOver) return;
@@ -216,14 +330,19 @@ export default function Tetris() {
         case "ArrowDown":
           moveDown();
           break;
+        case "ArrowUp":
         case " ":
           rotate();
+          break;
+        case "h":
+        case "H":
+          holdPiece();
           break;
         default:
           break;
       }
     },
-    [moveLeft, moveRight, moveDown, rotate, gameOver]
+    [moveLeft, moveRight, moveDown, rotate, holdPiece, gameOver]
   );
 
   useEffect(() => {
@@ -237,111 +356,188 @@ export default function Tetris() {
     setBoard(
       Array(BOARD_HEIGHT)
         .fill(null)
-        .map(() => Array(BOARD_WIDTH).fill(0))
+        .map(() => Array(BOARD_WIDTH).fill(null))
     );
     setCurrentPiece(null);
     setCurrentPosition({ x: 0, y: 0 });
     setScore(0);
+    setLevel(1);
     setGameOver(false);
     setGameStartTime(Date.now());
+    setHeldPiece(null);
+    setCanHold(true);
+    setNextPiece(Math.floor(Math.random() * TETROMINOS.length));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="w-full max-w-2xl mx-auto bg-white/10 backdrop-blur-md border-none">
+        <Card className="w-full max-w-[360px] mx-auto backdrop-blur-md border-none">
           <CardHeader>
-            <CardTitle className="text-3xl text-white">Tetris</CardTitle>
-            <CardDescription className="text-gray-200">
-              Clear lines to score points!
+            <CardTitle className="text-3xl">Tetris</CardTitle>
+            <CardDescription>
+              Clear lines to score points and level up!
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex justify-between items-center">
-              <Badge
-                variant="outline"
-                className="text-lg py-1 px-3 bg-white/20 text-white"
-              >
+            <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+              <Badge variant="outline" className="text-lg py-1 px-3">
                 Score: {score}
               </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetGame}
-                className="bg-white/20 text-white hover:bg-white/30"
-              >
-                {gameOver ? "New Game" : "Reset Game"}
-              </Button>
+              <Badge variant="outline" className="text-lg py-1 px-3">
+                Level: {level}
+              </Badge>
+              <Badge variant="outline" className="text-lg py-1 px-3">
+                High Score: {highScore}
+              </Badge>
+            </div>
+            <div className="flex justify-between mb-4">
+              <div className="w-20 h-20 bg-background/20 rounded-lg p-2">
+                <p className="text-sm mb-1">Hold:</p>
+                {heldPiece !== null && (
+                  <Image
+                    src={TETROMINO_IMAGES[heldPiece]}
+                    alt="Held Piece"
+                    width={60}
+                    height={60}
+                  />
+                )}
+              </div>
+              <div className="w-20 h-20 bg-background/20 rounded-lg p-2">
+                <p className="text-sm mb-1">Next:</p>
+                <Image
+                  src={TETROMINO_IMAGES[nextPiece]}
+                  alt="Next Piece"
+                  width={60}
+                  height={60}
+                />
+              </div>
             </div>
             <div
-              className="grid grid-cols-10 gap-1 mb-4 bg-black/50 p-2 rounded-lg"
-              style={{ width: "300px", margin: "0 auto" }}
+              className="grid grid-cols-10 gap-0.5 bg-background/50 p-2 rounded-lg mx-auto"
+              style={{ width: "280px", height: "560px" }}
             >
-              {board.map((row, rowIndex) =>
-                row.map((cell, cellIndex) => (
-                  <motion.div
-                    key={`${rowIndex}-${cellIndex}`}
-                    className={`w-7 h-7 border ${
-                      cell ||
-                      (currentPiece &&
-                        currentPosition.y <= rowIndex &&
-                        rowIndex < currentPosition.y + currentPiece.length &&
-                        currentPosition.x <= cellIndex &&
-                        cellIndex <
-                          currentPosition.x + currentPiece[0].length &&
-                        currentPiece[rowIndex - currentPosition.y][
-                          cellIndex - currentPosition.x
-                        ])
-                        ? currentColour
-                        : "bg-gray-800"
-                    }`}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                ))
-              )}
+              <AnimatePresence>
+                {board.map((row, rowIndex) =>
+                  row.map((cell, cellIndex) => {
+                    const isPieceCell =
+                      currentPiece &&
+                      currentPosition.y <= rowIndex &&
+                      rowIndex < currentPosition.y + currentPiece.length &&
+                      currentPosition.x <= cellIndex &&
+                      cellIndex < currentPosition.x + currentPiece[0].length &&
+                      currentPiece[rowIndex - currentPosition.y][
+                        cellIndex - currentPosition.x
+                      ] !== 0;
+
+                    const ghostPosition = getGhostPosition();
+                    const isGhostCell =
+                      ghostPosition &&
+                      currentPiece &&
+                      ghostPosition.y <= rowIndex &&
+                      rowIndex < ghostPosition.y + currentPiece.length &&
+                      ghostPosition.x <= cellIndex &&
+                      cellIndex < ghostPosition.x + currentPiece[0].length &&
+                      currentPiece[rowIndex - ghostPosition.y][
+                        cellIndex - ghostPosition.x
+                      ] !== 0;
+
+                    return (
+                      <motion.div
+                        key={`${rowIndex}-${cellIndex}`}
+                        className={`w-[26px] h-[26px] border rounded-sm overflow-hidden ${
+                          isGhostCell
+                            ? "border-white/50"
+                            : "border-background/20"
+                        }`}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {(cell !== null || isPieceCell || isGhostCell) && (
+                          <Image
+                            src={
+                              cell ||
+                              (isPieceCell
+                                ? currentImage
+                                : isGhostCell
+                                ? currentImage
+                                : "")
+                            }
+                            alt="Tetris Block"
+                            width={26}
+                            height={26}
+                            className={`w-full h-full ${
+                              isGhostCell ? "opacity-30" : ""
+                            }`}
+                          />
+                        )}
+                      </motion.div>
+                    );
+                  })
+                )}
+              </AnimatePresence>
+              {showParticles && <Particles count={50} />}
             </div>
-            <div className="flex justify-center space-x-2">
-              <Button
-                onClick={moveLeft}
-                className="bg-white/20 text-white hover:bg-white/30"
-              >
-                Left
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <Button onClick={moveLeft} className="w-full">
+                <ArrowLeft className="mr-2" /> Left
               </Button>
-              <Button
-                onClick={moveDown}
-                className="bg-white/20 text-white hover:bg-white/30"
-              >
-                Down
+              <Button onClick={moveDown} className="w-full">
+                <ArrowDown className="mr-2" /> Down
               </Button>
-              <Button
-                onClick={rotate}
-                className="bg-white/20 text-white hover:bg-white/30"
-              >
-                Rotate
+              <Button onClick={moveRight} className="w-full">
+                <ArrowRight className="mr-2" /> Right
               </Button>
-              <Button
-                onClick={moveRight}
-                className="bg-white/20 text-white hover:bg-white/30"
-              >
-                Right
+              <Button onClick={rotate} className="w-full col-span-2">
+                <RotateCcw className="mr-2" /> Rotate
+              </Button>
+              <Button onClick={holdPiece} className="w-full">
+                <PauseCircle className="mr-2" /> Hold
               </Button>
             </div>
           </CardContent>
           <CardFooter>
-            <p className="text-sm text-gray-200">
+            <p className="text-sm text-center w-full">
               Use the buttons or the keyboard (arrow keys and space) to move and
-              rotate the pieces. Clear lines to score points!
+              rotate the pieces. Press &#39;H&#39; to hold a piece. Clear lines
+              to score points and level up!
             </p>
           </CardFooter>
         </Card>
       </motion.div>
       {showConfetti && <Confetti />}
+      {gameOver && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          className="fixed inset-0 flex items-center justify-center bg-black/50"
+        >
+          <Card className="w-64 text-center">
+            <CardHeader>
+              <CardTitle>Game Over</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Your score: {score}</p>
+              <p>Level reached: {level}</p>
+              {score === highScore && (
+                <p className="text-green-500 font-bold mt-2">New High Score!</p>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button onClick={resetGame} className="w-full">
+                Play Again
+              </Button>
+            </CardFooter>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }
