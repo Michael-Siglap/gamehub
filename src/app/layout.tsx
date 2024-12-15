@@ -7,6 +7,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { cn } from "@/lib/utils";
 import { AdBanner } from "@/components/ad-banner";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -54,6 +55,7 @@ export default function RootLayout({
           </div>
         </ThemeProvider>
       </body>
+      <Analytics />
     </html>
   );
 }
