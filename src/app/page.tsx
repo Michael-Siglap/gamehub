@@ -17,6 +17,7 @@ import {
   Puzzle,
   Square,
   CrosshairIcon,
+  Anchor,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -58,6 +59,12 @@ const games = [
     path: "/games/crossword",
     icon: CrosshairIcon,
     description: "Daily puzzles and custom difficulties",
+  },
+  {
+    name: "Boat Sinking",
+    path: "/games/boat-sinking",
+    icon: Anchor,
+    description: "Sink enemy ships in this naval battle game",
   },
 ];
 
