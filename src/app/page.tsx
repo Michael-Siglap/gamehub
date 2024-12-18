@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CrosshairIcon as Crosshair2 } from "lucide-react";
 
 const games = [
   {
@@ -73,6 +74,16 @@ const games = [
     content:
       "Engage in tactical warfare on the high seas as you hunt down enemy vessels.",
     image: "/boatsinking.webp?height=200&width=400&text=Boat Sinking&bg=33FFF1",
+  },
+  {
+    name: "Stellar Assault",
+    path: "/games/stellar-assault",
+    icon: Crosshair2,
+    description: "2D space shooter game",
+    content:
+      "Engage in an intense space battle with smooth graphics and particle effects.",
+    image:
+      "/stellar-assault.webp?height=200&width=400&text=Stellar Assault&bg=000033",
   },
 ];
 
