@@ -454,7 +454,7 @@ export default function Crossword() {
 
   const handleGameCompletion = (gameDuration: number) => {
     setCompleted(true);
-    updateTimePlayed(gameDuration);
+    updateTimePlayed("Crossword", gameDuration);
     incrementGamesPlayed("Crossword");
 
     const difficultyMultiplier = { easy: 1, medium: 1.5, hard: 2 };

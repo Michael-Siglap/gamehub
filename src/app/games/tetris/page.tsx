@@ -303,7 +303,7 @@ export default function Tetris() {
       const gameDuration = Math.floor(
         (gameEndTime - (gameStartTime || gameEndTime)) / 1000
       );
-      updateTimePlayed(gameDuration);
+      updateTimePlayed("Tetris", gameDuration);
       incrementGamesPlayed("Tetris");
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 5000);

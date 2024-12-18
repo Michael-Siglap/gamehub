@@ -105,7 +105,7 @@ export default function TicTacToe() {
       const gameDuration = Math.floor(
         (gameEndTime - (gameStartTime || gameEndTime)) / 1000
       );
-      updateTimePlayed(gameDuration);
+      updateTimePlayed(`Tic Tac Toe ${boardSize}x${boardSize}`, gameDuration);
       incrementGamesPlayed(`Tic Tac Toe ${boardSize}x${boardSize}`);
 
       // Update scores

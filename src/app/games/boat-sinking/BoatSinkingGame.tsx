@@ -265,7 +265,7 @@ export default function BoatSinkingGame() {
       const gameDuration = Math.floor(
         (gameEndTime - (gameStartTime || gameEndTime)) / 1000
       );
-      updateTimePlayed(gameDuration);
+      updateTimePlayed("Boat Sinking", gameDuration);
       incrementGamesPlayed("Boat Sinking");
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 5000);

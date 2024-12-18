@@ -78,7 +78,7 @@ export default function Sudoku() {
       const gameDuration = Math.floor(
         (gameEndTime - (gameStartTime || gameEndTime)) / 1000
       );
-      updateTimePlayed(gameDuration);
+      updateTimePlayed("Sudoku", gameDuration);
       incrementGamesPlayed("Sudoku");
       confetti({
         particleCount: 100,

@@ -80,7 +80,7 @@ export default function MemoryGame() {
     if (solved.length === cards.length && gameStartTime) {
       const gameEndTime = Date.now();
       const gameDuration = Math.floor((gameEndTime - gameStartTime) / 1000);
-      updateTimePlayed(gameDuration);
+      updateTimePlayed("Memory Game", gameDuration);
       incrementGamesPlayed("Memory Game");
       setIsPlaying(false);
       confetti({

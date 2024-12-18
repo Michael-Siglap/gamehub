@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CrosshairIcon as Crosshair2 } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
 const games = [
   {
@@ -84,6 +85,15 @@ const games = [
       "Engage in an intense space battle with smooth graphics and particle effects.",
     image:
       "/stellar-assault.webp?height=200&width=400&text=Stellar Assault&bg=000033",
+  },
+  {
+    name: "Mahjong",
+    path: "/games/mahjong",
+    icon: LayoutGrid,
+    description: "Classic Chinese tile-based game",
+    content:
+      "Test your strategy and pattern recognition skills in this ancient game of skill, strategy, and calculation.",
+    image: "/mahjong.webp?height=200&width=400&text=Mahjong&bg=33FFAA",
   },
 ];
 
