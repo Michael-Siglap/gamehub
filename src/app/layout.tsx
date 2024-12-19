@@ -12,7 +12,7 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GameHub",
+  title: "GameTap",
   description: "A fun and engaging game hub for all!",
 };
 
@@ -26,10 +26,9 @@ export default function RootLayout({
       <body
         className={cn(
           inter.className,
-          "min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 text-foreground antialiased"
+          "min-h-screen bg-background text-foreground antialiased"
         )}
       >
-        <AdBanner />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -37,6 +36,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="relative flex min-h-screen flex-col">
+            <AdBanner />
             <Header />
             <div className="flex-1">
               <div className="container mx-auto p-4">{children}</div>
@@ -44,18 +44,9 @@ export default function RootLayout({
             <Footer />
           </div>
           <Toaster />
-          <div className="fixed inset-0 pointer-events-none">
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-              <div className="bubble"></div>
-              <div className="bubble"></div>
-              <div className="bubble"></div>
-              <div className="bubble"></div>
-              <div className="bubble"></div>
-            </div>
-          </div>
         </ThemeProvider>
+        <Analytics />
       </body>
-      <Analytics />
     </html>
   );
 }

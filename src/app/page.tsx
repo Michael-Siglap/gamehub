@@ -1,253 +1,99 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import Link from "next/link";
-import Image from "next/image";
-import {
-  Grid3X3,
-  Puzzle,
-  Square,
-  CrosshairIcon,
-  Anchor,
-  CastleIcon as ChessKnight,
-  ItalicIcon as AlphabetIcon,
-} from "lucide-react";
-import { motion } from "framer-motion";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { CrosshairIcon as Crosshair2 } from "lucide-react";
-import { LayoutGrid } from "lucide-react";
-
-const games = [
-  {
-    name: "Tic Tac Toe",
-    path: "/games/tictactoe",
-    icon: Grid3X3,
-    sizes: [3, 6, 12],
-    description: "Classic game of X's and O's",
-    content: "Strategize your moves in this timeless battle of wits.",
-    image: "/tictactoe.webp?height=200&width=400&text=Tic Tac Toe&bg=FF5733",
-  },
-  {
-    name: "Sudoku",
-    path: "/games/sudoku",
-    icon: Puzzle,
-    description: "Fill the grid with numbers",
-    content: "Challenge your logical thinking with number placement puzzles.",
-    image: "/sudoku.webp?height=200&width=400&text=Sudoku&bg=33FF57",
-  },
-  {
-    name: "Memory Game",
-    path: "/games/memory",
-    icon: Puzzle,
-    description: "Test your memory skills",
-    content: "Sharpen your recall abilities by matching pairs of hidden cards.",
-    image: "/memory.webp?height=200&width=400&text=Memory Game&bg=3357FF",
-  },
-  {
-    name: "Tetris",
-    path: "/games/tetris",
-    icon: Square,
-    description: "Stack and clear the blocks",
-    content:
-      "Experience the thrill of rapid block-stacking in this classic arcade game.",
-    image: "/tetris.webp?height=200&width=400&text=Tetris&bg=FF33F1",
-  },
-  {
-    name: "Crossword",
-    path: "/games/crossword",
-    icon: CrosshairIcon,
-    description: "Daily puzzles and custom difficulties",
-    content:
-      "Expand your vocabulary and test your knowledge with word puzzles.",
-    image: "/crossword.webp?height=200&width=400&text=Crossword&bg=F1FF33",
-  },
-  {
-    name: "Boat Sinking",
-    path: "/games/boat-sinking",
-    icon: Anchor,
-    description: "Sink enemy ships in this naval battle game",
-    content:
-      "Engage in tactical warfare on the high seas as you hunt down enemy vessels.",
-    image: "/boatsinking.webp?height=200&width=400&text=Boat Sinking&bg=33FFF1",
-  },
-  {
-    name: "Stellar Assault",
-    path: "/games/stellar-assault",
-    icon: Crosshair2,
-    description: "2D space shooter game",
-    content:
-      "Engage in an intense space battle with smooth graphics and particle effects.",
-    image:
-      "/stellar-assault.webp?height=200&width=400&text=Stellar Assault&bg=000033",
-  },
-  {
-    name: "Mahjong",
-    path: "/games/mahjong",
-    icon: LayoutGrid,
-    description: "Classic Chinese tile-based game",
-    content:
-      "Test your strategy and pattern recognition skills in this ancient game of skill, strategy, and calculation.",
-    image: "/mahjong.webp?height=200&width=400&text=Mahjong&bg=33FFAA",
-  },
-  {
-    name: "Shogi",
-    path: "/games/shogi",
-    icon: ChessKnight,
-    description: "Japanese chess",
-    content:
-      "Challenge your strategic thinking with this complex board game, also known as Japanese chess.",
-    image: "/shogi.webp?height=200&width=400&text=Shogi&bg=8B4513",
-  },
-  {
-    name: "Wordex",
-    path: "/games/wordex",
-    icon: AlphabetIcon,
-    description: "Guess the hidden 6-letter word",
-    content:
-      "Test your vocabulary and deduction skills in this popular word-guessing game. Can you solve the puzzle in 6 tries?",
-    image: "/wordex.webp?height=200&width=400&text=Wordex&bg=33FFAA",
-  },
-];
+import GameGrid from "@/components/GameGrid";
+import GameModal from "@/components/GameModal";
+import HeroSection from "@/components/HeroSection";
+import { Game, games } from "@/data/games";
+import { Search, Filter } from "lucide-react";
 
 export default function Home() {
-  const [open, setOpen] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<(typeof games)[0] | null>(
-    null
-  );
-  const [bubbleStyles, setBubbleStyles] = useState<
-    Array<{ left: string; animationDelay: string; animationDuration: string }>
-  >([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [filteredGames, setFilteredGames] = useState(games);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
   useEffect(() => {
-    const newBubbleStyles = Array(5)
-      .fill(null)
-      .map(() => ({
-        left: `${Math.random() * 100}%`,
-        animationDelay: `${Math.random() * 2}s`,
-        animationDuration: `${Math.random() * 10 + 5}s`,
-      }));
-    setBubbleStyles(newBubbleStyles);
-  }, []);
+    const filtered = games.filter(
+      (game) =>
+        game.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (selectedCategory === "All" || game.category === selectedCategory)
+    );
+    setFilteredGames(filtered);
+  }, [searchTerm, selectedCategory]);
 
-  const handleGameClick = (game: (typeof games)[0]) => {
-    if (game.sizes) {
-      setSelectedGame(game);
-      setOpen(true);
-    }
-  };
+  const categories = ["All", ...new Set(games.map((game) => game.category))];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 p-8">
-      <motion.h1
-        className="text-4xl font-bold text-center mb-4 text-white"
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500"
+    >
+      <HeroSection />
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="container mx-auto px-4 py-8"
       >
-        Welcome to GameHub
-      </motion.h1>
-      <motion.p
-        className="text-xl text-center mb-8 text-white/80"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        Experience AI-crafted games and challenge artificial intelligence in
-        thrilling matches!
-      </motion.p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map((game, index) => {
-          const Icon = game.icon;
-          return (
-            <motion.div
-              key={game.path}
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Link
-                href={game.sizes ? "#" : game.path}
-                onClick={(e) => {
-                  if (game.sizes) {
-                    e.preventDefault();
-                    handleGameClick(game);
-                  }
-                }}
-                className="block h-full"
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="flex flex-col md:flex-row justify-between items-center mb-8 space-y-4 md:space-y-0 md:space-x-4"
+        >
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="relative w-full md:w-1/3"
+          >
+            <Input
+              type="text"
+              placeholder="Search games..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </motion.div>
+          <motion.div
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="flex items-center space-x-2 overflow-x-auto w-full md:w-auto"
+          >
+            <Filter className="text-white" />
+            {categories.map((category, index) => (
+              <motion.div
+                key={category}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.3 }}
               >
-                <Card className="group flex flex-col h-full bg-white/10 backdrop-blur-md border-none transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer overflow-hidden">
-                  <div className="relative w-full h-48 overflow-hidden">
-                    <Image
-                      src={game.image}
-                      alt={game.name}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="rounded-t-lg transition-transform duration-300 group-hover:scale-110 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </div>
-                  <CardHeader className="pb-2 relative z-10">
-                    <CardTitle className="flex items-center space-x-2 text-white group-hover:text-purple-300 transition-colors duration-300">
-                      <Icon className="h-6 w-6" />
-                      <span>{game.name}</span>
-                    </CardTitle>
-                    <CardDescription className="text-gray-200 group-hover:text-white transition-colors duration-300">
-                      {game.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow pb-4 relative z-10">
-                    <p className="text-sm text-gray-300 group-hover:text-white transition-colors duration-300">
-                      {game.content}
-                    </p>
-                  </CardContent>
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-                </Card>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-white/90 backdrop-blur-md">
-          <DialogHeader>
-            <DialogTitle>Select {selectedGame?.name} Size</DialogTitle>
-            <DialogDescription>
-              Choose the size of the {selectedGame?.name} board you want to
-              play.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-3 gap-4">
-            {selectedGame?.sizes?.map((size) => (
-              <Link key={size} href={`${selectedGame.path}/${size}`}>
-                <Button className="w-full bg-purple-600 text-white hover:bg-purple-700">
-                  {size}x{size}
+                <Button
+                  variant={
+                    selectedCategory === category ? "default" : "outline"
+                  }
+                  onClick={() => setSelectedCategory(category)}
+                  className="whitespace-nowrap"
+                >
+                  {category}
                 </Button>
-              </Link>
+              </motion.div>
             ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-      <div className="fixed inset-0 pointer-events-none -z-10">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-          {bubbleStyles.map((style, i) => (
-            <div key={i} className="bubble" style={style}></div>
-          ))}
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+        <AnimatePresence>
+          <GameGrid games={filteredGames} onGameClick={setSelectedGame} />
+        </AnimatePresence>
+      </motion.div>
+      <GameModal game={selectedGame} onClose={() => setSelectedGame(null)} />
+    </motion.div>
   );
 }
