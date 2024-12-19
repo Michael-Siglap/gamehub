@@ -4,12 +4,13 @@ import Link from "next/link";
 
 export default function HeroSection() {
   return (
-    <div className="relative h-[50vh] flex items-center justify-center overflow-hidden">
+    <div className="relative h-screen flex items-center justify-center overflow-hidden">
       <video
         autoPlay
         loop
         muted
-        className="absolute w-full h-full object-cover"
+        playsInline
+        className="absolute w-full h-full object-cover min-h-screen"
       >
         <source src="/hero-background.mp4" type="video/mp4" />
       </video>
@@ -19,7 +20,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-5xl font-bold text-white mb-4"
+          className="text-4xl md:text-5xl font-bold text-white mb-4"
         >
           Welcome to GameTap
         </motion.h1>
@@ -27,7 +28,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-xl text-white mb-8"
+          className="text-lg md:text-xl text-white mb-8"
         >
           Discover and play amazing games
         </motion.p>
