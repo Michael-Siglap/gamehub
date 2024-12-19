@@ -11,7 +11,15 @@ import {
 } from "@/components/ui/card";
 import Link from "next/link";
 import Image from "next/image";
-import { Grid3X3, Puzzle, Square, CrosshairIcon, Anchor } from "lucide-react";
+import {
+  Grid3X3,
+  Puzzle,
+  Square,
+  CrosshairIcon,
+  Anchor,
+  CastleIcon as ChessKnight,
+  ItalicIcon as AlphabetIcon,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import {
   Dialog,
@@ -94,6 +102,24 @@ const games = [
     content:
       "Test your strategy and pattern recognition skills in this ancient game of skill, strategy, and calculation.",
     image: "/mahjong.webp?height=200&width=400&text=Mahjong&bg=33FFAA",
+  },
+  {
+    name: "Shogi",
+    path: "/games/shogi",
+    icon: ChessKnight,
+    description: "Japanese chess",
+    content:
+      "Challenge your strategic thinking with this complex board game, also known as Japanese chess.",
+    image: "/shogi.webp?height=200&width=400&text=Shogi&bg=8B4513",
+  },
+  {
+    name: "Wordex",
+    path: "/games/wordex",
+    icon: AlphabetIcon,
+    description: "Guess the hidden 6-letter word",
+    content:
+      "Test your vocabulary and deduction skills in this popular word-guessing game. Can you solve the puzzle in 6 tries?",
+    image: "/wordex.webp?height=200&width=400&text=Wordex&bg=33FFAA",
   },
 ];
 

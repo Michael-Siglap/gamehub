@@ -75,6 +75,46 @@
   }
 }
 
+@layer utilities {
+  .animate-flip-reveal {
+    animation: flip-reveal 0.8s ease-in-out;
+    animation-fill-mode: backwards;
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.5s ease-in-out;
+    animation-fill-mode: backwards;
+  }
+}
+
+@keyframes flip-reveal {
+  0% {
+    transform: rotateX(0deg);
+    background-color: transparent;
+  }
+  50% {
+    transform: rotateX(90deg);
+    background-color: transparent;
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .bubble {
   position: absolute;
   bottom: -100px;
@@ -137,4 +177,87 @@
     bottom: 1080px;
     transform: translateX(-200px);
   }
+}
+
+/* Shogi game specific styles */
+.bg-wood-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d2b48c' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+.bg-wood-pattern-dark {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23614e3d' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Dark mode adjustments */
+.dark .bg-wood-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23614e3d' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.dark .text-primary {
+  color: hsl(var(--primary));
+}
+
+.dark .bg-primary {
+  background-color: hsl(var(--primary));
+}
+
+.dark .border-primary {
+  border-color: hsl(var(--primary));
+}
+
+/* Improve contrast for dark mode text */
+.dark body {
+  color: hsl(var(--foreground));
+}
+
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: hsl(var(--foreground));
+}
+
+/* Adjust button styles for dark mode */
+.dark .btn-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.dark .btn-primary:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+/* Improve form input visibility in dark mode */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: hsl(var(--input));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: hsl(var(--ring));
 }
