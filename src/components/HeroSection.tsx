@@ -1,6 +1,4 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 export default function HeroSection() {
   return (
@@ -32,11 +30,6 @@ export default function HeroSection() {
         >
           Discover and play amazing games
         </motion.p>
-        <Link href="#games">
-          <Button size="lg" className="animate-bounce">
-            Explore Games
-          </Button>
-        </Link>
       </div>
     </div>
   );
