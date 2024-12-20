@@ -153,4 +153,14 @@ export const games: Game[] = [
     image: "/palabra-del-dia.webp",
     category: "Word",
   },
+  {
+    name: "Le Pendu",
+    path: "/games/le-pendu",
+    icon: LanguagesIcon,
+    description: "Devinez le mot en français",
+    content:
+      "Testez votre vocabulaire français avec ce jeu classique de devinettes de mots.",
+    image: "/le-pendu.webp",
+    category: "Word",
+  },
 ];
