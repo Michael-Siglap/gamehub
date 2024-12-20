@@ -32,11 +32,6 @@ export default function Header() {
                   Dashboard
                 </Link>
               </li>
-              <li>
-                <Link href="/" className="hover:text-primary transition-colors">
-                  Games
-                </Link>
-              </li>
             </ul>
           </nav>
           <Button

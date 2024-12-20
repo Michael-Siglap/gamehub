@@ -7,6 +7,8 @@ import {
   CastleIcon,
   ItalicIcon,
   LayoutGrid,
+  Music,
+  Zap,
 } from "lucide-react";
 
 export interface Game {
@@ -119,5 +121,25 @@ export const games: Game[] = [
       "Test your vocabulary and deduction skills in this popular word-guessing game. Can you solve the puzzle in 6 tries?",
     image: "/wordex.webp",
     category: "Word",
+  },
+  {
+    name: "Beat Master",
+    path: "/games/beat-master",
+    icon: Music,
+    description: "Test your rhythm and timing",
+    content:
+      "Tap to the beat and match the on-screen patterns in this addictive rhythm game.",
+    image: "/beat-master.webp",
+    category: "Music",
+  },
+  {
+    name: "Quantum Shift",
+    path: "/games/quantum-shift",
+    icon: Zap,
+    description: "Navigate through space-time anomalies",
+    content:
+      "Solve mind-bending puzzles while platforming through shifting realities in this innovative puzzle-platformer.",
+    image: "/quantum-shift.webp",
+    category: "Puzzle Platformer",
   },
 ];
