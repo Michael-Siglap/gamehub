@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Music,
   Zap,
+  LanguagesIcon,
 } from "lucide-react";
 
 export interface Game {
@@ -141,5 +142,15 @@ export const games: Game[] = [
       "Solve mind-bending puzzles while platforming through shifting realities in this innovative puzzle-platformer.",
     image: "/quantum-shift.webp",
     category: "Puzzle Platformer",
+  },
+  {
+    name: "Palabra del Día",
+    path: "/games/palabra-del-dia",
+    icon: LanguagesIcon,
+    description: "Adivina la palabra en español",
+    content:
+      "Pon a prueba tu vocabulario español con este juego diario de adivinanzas de palabras.",
+    image: "/palabra-del-dia.webp",
+    category: "Word",
   },
 ];
