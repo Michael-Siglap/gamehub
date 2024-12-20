@@ -596,12 +596,23 @@ export default function LePendu() {
   const [remainingGuesses, setRemainingGuesses] = useState(10);
   const [input, setInput] = useState("");
   const [hangmanDesignIndex, setHangmanDesignIndex] = useState(0);
+  const [points, setPoints] = useState(0);
+  const [overallPoints, setOverallPoints] = useState(0);
+  const [gameOver, setGameOver] = useState(false); // Added game over state
   const { toast } = useToast();
 
   useEffect(() => {
-    setWord(words[Math.floor(Math.random() * words.length)]);
-    setHangmanDesignIndex(Math.floor(Math.random() * hangmanDesigns.length));
+    startNewGame();
   }, []);
+
+  const startNewGame = () => {
+    setWord(words[Math.floor(Math.random() * words.length)]);
+    setGuessedLetters([]);
+    setRemainingGuesses(10);
+    setPoints(0);
+    setHangmanDesignIndex(Math.floor(Math.random() * hangmanDesigns.length));
+    setGameOver(false);
+  };
 
   const guessLetter = (letter: string) => {
     if (guessedLetters.includes(letter)) {
@@ -615,22 +626,41 @@ export default function LePendu() {
     const newGuessedLetters = [...guessedLetters, letter];
     setGuessedLetters(newGuessedLetters);
 
-    if (!word.includes(letter)) {
+    if (word.includes(letter)) {
+      // Correct guess: add points based on letter frequency
+      const letterFrequency = word.split(letter).length - 1;
+      const pointsEarned = letterFrequency * 10;
+      setPoints((prevPoints) => prevPoints + pointsEarned);
+      setOverallPoints((prevOverallPoints) => prevOverallPoints + pointsEarned);
+    } else {
+      // Incorrect guess: subtract points
+      const pointsLost = 5;
+      setPoints((prevPoints) => Math.max(0, prevPoints - pointsLost));
+      setOverallPoints((prevOverallPoints) =>
+        Math.max(0, prevOverallPoints - pointsLost)
+      );
       setRemainingGuesses(remainingGuesses - 1);
     }
 
     if (word.split("").every((char) => newGuessedLetters.includes(char))) {
+      const bonusPoints = 50;
+      setPoints((prevPoints) => prevPoints + bonusPoints);
+      setOverallPoints((prevOverallPoints) => prevOverallPoints + bonusPoints);
       toast({
         title: "Félicitations!",
-        description: "Vous avez deviné le mot!",
+        description: `Vous avez deviné le mot! Points gagnés: ${
+          points + bonusPoints
+        }`,
       });
+      setGameOver(true);
     }
 
     if (remainingGuesses === 1 && !word.includes(letter)) {
       toast({
         title: "Jeu terminé",
-        description: `Le mot était: ${word}`,
+        description: `Le mot était: ${word}. Points finaux: ${points}`,
       });
+      setGameOver(true);
     }
   };
 
@@ -643,9 +673,6 @@ export default function LePendu() {
   };
 
   const incorrectGuesses = 10 - remainingGuesses;
-  const gameOver =
-    remainingGuesses === 0 ||
-    word.split("").every((char) => guessedLetters.includes(char));
 
   return (
     <motion.div
@@ -700,6 +727,22 @@ export default function LePendu() {
           >
             Essais restants: {remainingGuesses}
           </motion.p>
+          <motion.div className="mb-6 text-xl font-semibold flex justify-between w-full">
+            <motion.p
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+            >
+              Points (mot actuel): {points}
+            </motion.p>
+            <motion.p
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.8 }}
+            >
+              Points totaux: {overallPoints}
+            </motion.p>
+          </motion.div>
           <motion.form
             onSubmit={handleSubmit}
             className="flex gap-2 mb-6"
@@ -778,13 +821,28 @@ export default function LePendu() {
                 {remainingGuesses === 0
                   ? `Le mot était: ${word}`
                   : "Vous avez deviné le mot!"}
+                <br />
+                Points pour ce mot: {points}
+                <br />
+                Points totaux: {overallPoints}
               </p>
-              <Button
-                onClick={() => window.location.reload()}
-                className="bg-gradient-to-r from-pink-500 to-cyan-500 text-white hover:from-pink-600 hover:to-cyan-600 transition-all duration-300"
-              >
-                Rejouer
-              </Button>
+              <div className="flex justify-center space-x-4">
+                <Button
+                  onClick={() => {
+                    startNewGame();
+                    setGameOver(false);
+                  }}
+                  className="bg-gradient-to-r from-pink-500 to-cyan-500 text-white hover:from-pink-600 hover:to-cyan-600 transition-all duration-300"
+                >
+                  Nouveau mot
+                </Button>
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 transition-all duration-300"
+                >
+                  Recommencer
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
