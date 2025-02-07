@@ -27,10 +27,10 @@ const ads: Ad[] = [
     linkText: "Visit Best City Index",
   },
   {
-    title: "Upgrade Your Gaming Experience",
-    description: "Get exclusive in-game items and bonuses!",
-    link: "https://gametap.com/premium",
-    linkText: "Go Premium",
+    title: "Find Your Perfect Baking Recipe",
+    description: "Get access to premium baking recipes!",
+    link: "https://bakingheritage.com",
+    linkText: "Go Baking",
   },
 ];
 

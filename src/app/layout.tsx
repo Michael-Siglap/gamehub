@@ -23,6 +23,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <meta
+        name="google-site-verification"
+        content="u0KlgPw9q41vHMaQZWHa_FZAizIQWzd003LqHLKaf4k"
+      />
       <body
         className={cn(
           inter.className,
