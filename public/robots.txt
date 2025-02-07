@@ -1,0 +1,10 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://gametap.app
+
+# Sitemaps
+Sitemap: https://gametap.app/sitemap.xml
+Sitemap: https://gametap.com/server-sitemap.app
